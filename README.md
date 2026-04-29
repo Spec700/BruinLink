@@ -1,1 +1,1 @@
-# BruinLinkAI
+# BruinLink

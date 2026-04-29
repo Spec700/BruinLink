@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(0.985 0.007 255);
+  --foreground: oklch(0.23 0.055 258);
+  --muted: oklch(0.51 0.045 258);
+  --subtle: oklch(0.94 0.017 255);
+  --surface: oklch(0.998 0.004 255);
+  --surface-strong: oklch(0.965 0.021 252);
+  --line: oklch(0.86 0.025 255);
+  --ucla-blue: oklch(0.46 0.15 252);
+  --ucla-blue-strong: oklch(0.35 0.14 252);
+  --ucla-blue-soft: oklch(0.9 0.05 252);
+  --ucla-yellow: oklch(0.84 0.16 88);
+  --ucla-yellow-soft: oklch(0.95 0.06 88);
+  --success: oklch(0.53 0.12 155);
+  --warning: oklch(0.72 0.15 70);
+  --danger: oklch(0.56 0.16 25);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-saira);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), "Atkinson Hyperlegible", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--ucla-yellow);
+  color: var(--ucla-blue-strong);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}

@@ -6,10 +6,18 @@ import {
   CheckCircle2,
   Mail,
   MapPin,
-  Pencil,
   Users,
 } from "lucide-react";
-import { categories, categoryLabels, clubs, getClubBySlug } from "@/lib/clubs";
+import {
+  categories,
+  categoryLabels,
+  fetchAllClubs,
+  fetchClubBySlug,
+} from "@/lib/clubs";
+import { ClubPageEditor } from "@/components/ClubPageEditor";
+import { cookies } from "next/headers";
+
+export const dynamic = "force-dynamic";
 
 type ClubPageProps = {
   params: Promise<{
@@ -17,17 +25,11 @@ type ClubPageProps = {
   }>;
 };
 
-const statusCopy = {
+const statusCopy: Record<string, string> = {
   fresh: "Recently updated",
   steady: "Current",
   "needs update": "Needs attention",
 };
-
-export function generateStaticParams() {
-  return clubs.map((club) => ({
-    slug: club.slug,
-  }));
-}
 
 function initials(name: string) {
   return name
@@ -39,18 +41,23 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export default async function ClubDashboardPage({ params }: ClubPageProps) {
+export default async function ClubPage({ params }: ClubPageProps) {
   const { slug } = await params;
-  const club = getClubBySlug(slug);
+  const club = await fetchClubBySlug(slug);
 
   if (!club) {
     notFound();
   }
 
-  const siblingClubs = clubs
-    .filter((candidate) => candidate.category === club.category)
-    .filter((candidate) => candidate.slug !== club.slug)
+  const allClubs = await fetchAllClubs();
+
+  const siblingClubs = allClubs
+    .filter((c) => c.category === club.category && c.slug !== club.slug)
     .slice(0, 3);
+
+  const cookieStore = await cookies();
+  const signedInSlug = cookieStore.get("club_session")?.value ?? null;
+  const isOwner = signedInSlug === club.slug;
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
@@ -91,7 +98,7 @@ export default async function ClubDashboardPage({ params }: ClubPageProps) {
                     Dashboard status
                   </p>
                   <p className="mt-1 font-display text-2xl font-extrabold text-[var(--ucla-blue-strong)]">
-                    {statusCopy[club.status]}
+                    {statusCopy[club.status] ?? club.status}
                   </p>
                 </div>
                 <CheckCircle2
@@ -135,54 +142,7 @@ export default async function ClubDashboardPage({ params }: ClubPageProps) {
       </section>
 
       <section className="mx-auto grid w-full max-w-7xl gap-4 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
-        <div className="grid gap-4">
-          <article className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-bold text-[var(--muted)]">Profile</p>
-                <h2 className="mt-1 font-display text-2xl font-extrabold text-[var(--foreground)]">
-                  About
-                </h2>
-              </div>
-              <Pencil aria-hidden="true" className="h-5 w-5 text-[var(--ucla-blue)]" />
-            </div>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-[var(--muted)]">
-              {club.about}
-            </p>
-          </article>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <article className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-              <p className="text-sm font-bold text-[var(--muted)]">Section</p>
-              <h2 className="mt-1 font-display text-2xl font-extrabold text-[var(--foreground)]">
-                Upcoming Events
-              </h2>
-              <p className="mt-4 text-base leading-8 text-[var(--muted)]">
-                {club.upcomingEvents}
-              </p>
-            </article>
-
-            <article className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-              <p className="text-sm font-bold text-[var(--muted)]">Section</p>
-              <h2 className="mt-1 font-display text-2xl font-extrabold text-[var(--foreground)]">
-                Announcements
-              </h2>
-              <p className="mt-4 text-base leading-8 text-[var(--muted)]">
-                {club.announcements}
-              </p>
-            </article>
-          </div>
-
-          <article className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
-            <p className="text-sm font-bold text-[var(--muted)]">Public page</p>
-            <h2 className="mt-1 font-display text-2xl font-extrabold text-[var(--foreground)]">
-              Contact Information
-            </h2>
-            <p className="mt-4 text-base leading-8 text-[var(--muted)]">
-              {club.contactInfo}
-            </p>
-          </article>
-        </div>
+        <ClubPageEditor club={club} isOwner={isOwner} />
 
         <aside className="grid self-start gap-4 lg:sticky lg:top-6">
           <section className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5">
@@ -201,10 +161,7 @@ export default async function ClubDashboardPage({ params }: ClubPageProps) {
                 >
                   <span>{categoryLabels[category]}</span>
                   <span>
-                    {
-                      clubs.filter((candidate) => candidate.category === category)
-                        .length
-                    }
+                    {allClubs.filter((c) => c.category === category).length}
                   </span>
                 </div>
               ))}

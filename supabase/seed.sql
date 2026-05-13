@@ -1,0 +1,260 @@
+-- BruinLink clubs table
+-- Run this in your Supabase SQL Editor to create and seed the clubs table.
+
+create table if not exists clubs (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null,
+  name text not null,
+  category text not null check (category in ('engineering', 'computer science', 'business', 'cultural', 'other')),
+  short_description text not null default '',
+  about text not null default '',
+  upcoming_events text not null default '',
+  announcements text not null default '',
+  contact_info text not null default '',
+  meeting_time text not null default '',
+  location text not null default '',
+  members integer not null default 0,
+  status text not null default 'fresh' check (status in ('fresh', 'needs update', 'steady')),
+  edit_pin text not null check (char_length(edit_pin) = 4),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Row-level security: allow public reads, restrict writes to authenticated service role
+alter table clubs enable row level security;
+
+create policy "Public read access" on clubs
+  for select using (true);
+
+create policy "Allow all updates" on clubs
+  for update using (true);
+
+-- Seed data (15 clubs with unique 4-digit pins)
+
+insert into clubs (slug, name, category, short_description, about, upcoming_events, announcements, contact_info, meeting_time, location, members, status, edit_pin)
+values
+  (
+    'bruin-forge-engineering',
+    'Bruin Forge Engineering',
+    'engineering',
+    'Hands-on design team building small-scale mechanical systems for campus challenges.',
+    'Bruin Forge Engineering gives students a place to prototype, test, and present practical engineering projects. Members work in small squads and rotate through design reviews, CAD workshops, and build nights.',
+    'Spring prototype night is scheduled for Thursday at Boelter Hall. New members can join the design review table at 6:30 PM.',
+    'Project leads are collecting interest forms for the next campus mobility challenge.',
+    'bruinforge@g.ucla.edu',
+    'Thursdays, 6:30 PM',
+    'Boelter Hall',
+    48,
+    'fresh',
+    '1001'
+  ),
+  (
+    'westwood-rocket-works',
+    'Westwood Rocket Works',
+    'engineering',
+    'A student group exploring aerospace design, launch simulations, and build safety.',
+    'Westwood Rocket Works introduces students to aerospace fundamentals through simulation sessions, model fabrication, and safety-first launch planning.',
+    'Wind tunnel demo planning session meets next Monday in the engineering makerspace.',
+    'The propulsion reading group has opened a beginner track for spring quarter.',
+    'rocketworks@g.ucla.edu',
+    'Mondays, 7:00 PM',
+    'Engineering VI',
+    36,
+    'steady',
+    '1002'
+  ),
+  (
+    'pacific-design-lab',
+    'Pacific Design Lab',
+    'engineering',
+    'Interdisciplinary studio for product design, fabrication, and critique.',
+    'Pacific Design Lab pairs engineering students with designers to turn early concepts into usable physical prototypes. The club emphasizes sketching, testing, and clear presentation.',
+    'Portfolio critique night is Friday at 5:00 PM with peer feedback tables.',
+    'Members can reserve 3D printer slots for final project week through the club form.',
+    'pacificdesign@g.ucla.edu',
+    'Fridays, 5:00 PM',
+    'Perloff Hall',
+    29,
+    'needs update',
+    '1003'
+  ),
+  (
+    'bruin-software-union',
+    'Bruin Software Union',
+    'computer science',
+    'A collaborative coding community for students building web apps and tools.',
+    'Bruin Software Union helps students ship small software projects in teams. Weekly sessions include code review, product planning, and practical workshops for React, databases, and deployment.',
+    'React component clinic meets Wednesday in the Young Research Library collaboration room.',
+    'Spring project teams are matching designers and engineers this week.',
+    'softwareunion@g.ucla.edu',
+    'Wednesdays, 6:00 PM',
+    'YRL Collaboration Room',
+    72,
+    'fresh',
+    '2001'
+  ),
+  (
+    'westwood-data-collective',
+    'Westwood Data Collective',
+    'computer science',
+    'Data science club focused on public datasets, visualization, and campus insights.',
+    'Westwood Data Collective teaches students how to clean, analyze, and present data. Members work on short case studies and publish visual reports for practice.',
+    'The next notebook lab covers transit data and map-based visualizations.',
+    'Beginner Python office hours are moving to Tuesday evenings for the rest of spring.',
+    'datacollective@g.ucla.edu',
+    'Tuesdays, 7:30 PM',
+    'Mathematical Sciences',
+    64,
+    'steady',
+    '2002'
+  ),
+  (
+    'ucla-web-builders',
+    'UCLA Web Builders',
+    'computer science',
+    'Student builders practicing frontend, backend, and product collaboration.',
+    'UCLA Web Builders runs short build sprints where students create portfolio-ready web projects. The club is beginner-friendly and emphasizes readable code and thoughtful interfaces.',
+    'Design systems workshop happens Sunday afternoon in the student activities center.',
+    'The spring showcase signup form is open for teams that want feedback.',
+    'webbuilders@g.ucla.edu',
+    'Sundays, 3:00 PM',
+    'Student Activities Center',
+    55,
+    'fresh',
+    '2003'
+  ),
+  (
+    'bruin-venture-circle',
+    'Bruin Venture Circle',
+    'business',
+    'A student entrepreneurship group for pitch practice and startup research.',
+    'Bruin Venture Circle brings together students interested in startups, product strategy, and early-stage investing. Members practice concise pitches and analyze emerging markets.',
+    'Founder fireside chat preparation meets Thursday in Ackerman Union.',
+    'Pitch deck peer reviews are available by appointment this month.',
+    'venturecircle@g.ucla.edu',
+    'Thursdays, 7:00 PM',
+    'Ackerman Union',
+    41,
+    'steady',
+    '3001'
+  ),
+  (
+    'startup-strategy-society',
+    'Startup Strategy Society',
+    'business',
+    'Case-practice community for students interested in growth and operations.',
+    'Startup Strategy Society studies how early companies choose customers, price products, and run operations. Meetings mix short talks with team-based cases.',
+    'Market sizing practice night is next Tuesday with three beginner prompts.',
+    'Applications for the internal consulting sprint close at the end of the week.',
+    'startupstrategy@g.ucla.edu',
+    'Tuesdays, 6:30 PM',
+    'Bunche Hall',
+    38,
+    'needs update',
+    '3002'
+  ),
+  (
+    'campus-consulting-collective',
+    'Campus Consulting Collective',
+    'business',
+    'Student consulting practice group supporting local and campus organizations.',
+    'Campus Consulting Collective gives members a structured way to learn client research, slide writing, and presentation skills through scoped student projects.',
+    'Client scoping workshop meets Saturday morning with returning project leads.',
+    'New analyst onboarding packets have been posted to the member drive.',
+    'campusconsulting@g.ucla.edu',
+    'Saturdays, 10:00 AM',
+    'Anderson Courtyard',
+    52,
+    'fresh',
+    '3003'
+  ),
+  (
+    'mosaic-bruins',
+    'Mosaic Bruins',
+    'cultural',
+    'Cultural exchange club hosting story nights, food socials, and discussion circles.',
+    'Mosaic Bruins creates space for students to share culture through conversation, food, music, and campus events. The club welcomes members from every background.',
+    'Community story night takes place Friday evening on the Hill.',
+    'Members are invited to suggest themes for the end-of-quarter culture showcase.',
+    'mosaicbruins@g.ucla.edu',
+    'Fridays, 7:00 PM',
+    'De Neve Commons',
+    67,
+    'steady',
+    '4001'
+  ),
+  (
+    'pacific-islander-arts-circle',
+    'Pacific Islander Arts Circle',
+    'cultural',
+    'Arts and heritage group centered on performance, storytelling, and community.',
+    'Pacific Islander Arts Circle supports students interested in heritage arts, performance, and cultural education. Meetings include practice sessions and informal discussion.',
+    'Spring performance rehearsal is scheduled for Wednesday night.',
+    'Costume inventory volunteers are needed before the next showcase rehearsal.',
+    'piartscircle@g.ucla.edu',
+    'Wednesdays, 8:00 PM',
+    'Kerckhoff Hall',
+    34,
+    'fresh',
+    '4002'
+  ),
+  (
+    'global-bruins-exchange',
+    'Global Bruins Exchange',
+    'cultural',
+    'A student-led space for international friendship and cross-cultural events.',
+    'Global Bruins Exchange connects domestic and international students through small group outings, language tables, and practical campus conversations.',
+    'Language table mixer meets next Monday on Bruin Walk.',
+    'Host signups are open for the spring welcome picnic.',
+    'globalbruins@g.ucla.edu',
+    'Mondays, 5:00 PM',
+    'Bruin Walk',
+    73,
+    'steady',
+    '4003'
+  ),
+  (
+    'bruin-board-game-society',
+    'Bruin Board Game Society',
+    'other',
+    'Casual strategy, party game, and tabletop nights for students across campus.',
+    'Bruin Board Game Society hosts relaxed game nights where students can learn new tabletop games or bring their favorites. No experience is required.',
+    'Draft-and-play night is this Saturday in the residence hall lounge.',
+    'The club library added five new strategy games for spring quarter.',
+    'boardgames@g.ucla.edu',
+    'Saturdays, 8:00 PM',
+    'Rieber Hall',
+    44,
+    'fresh',
+    '5001'
+  ),
+  (
+    'sunset-service-crew',
+    'Sunset Service Crew',
+    'other',
+    'Volunteer group organizing weekend service trips around Los Angeles.',
+    'Sunset Service Crew coordinates approachable volunteer opportunities for students who want to serve local communities and meet new people.',
+    'Beach cleanup carpool leaves from campus at 9:00 AM on Sunday.',
+    'Drivers are needed for two upcoming food bank volunteer shifts.',
+    'sunsetservice@g.ucla.edu',
+    'Sundays, 9:00 AM',
+    'Westwood Plaza',
+    58,
+    'steady',
+    '5002'
+  ),
+  (
+    'westwood-wellness-club',
+    'Westwood Wellness Club',
+    'other',
+    'Peer community for low-pressure wellness events, walks, and study breaks.',
+    'Westwood Wellness Club organizes accessible activities that help students reset during busy weeks. Events include walks, tea socials, and quiet study breaks.',
+    'Sunset walk meets outside Powell Library this Thursday.',
+    'The spring finals care package packing shift is open for volunteers.',
+    'westwoodwellness@g.ucla.edu',
+    'Thursdays, 5:30 PM',
+    'Powell Library',
+    46,
+    'needs update',
+    '5003'
+  );

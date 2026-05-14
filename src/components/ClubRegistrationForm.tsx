@@ -11,7 +11,8 @@ import {
   Send,
   UserRound,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { submitClubRegistration } from "@/app/register/actions";
 import { categories, categoryLabels } from "@/lib/clubs";
 import {
   initialRegistrationInput,
@@ -35,6 +36,8 @@ export function ClubRegistrationForm() {
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [submittedRequest, setSubmittedRequest] =
     useState<SubmittedRequest | null>(null);
+  const [submitMessage, setSubmitMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
@@ -43,6 +46,7 @@ export function ClubRegistrationForm() {
       ...current,
       [field]: value,
     }));
+    setSubmitMessage("");
 
     setErrors((current) => {
       if (!current[field]) {
@@ -61,15 +65,30 @@ export function ClubRegistrationForm() {
     if (!result.ok) {
       setSubmittedRequest(null);
       setErrors(result.errors);
+      setSubmitMessage("Check the highlighted fields and submit again.");
       return;
     }
 
-    setSubmittedRequest({
-      clubName: result.data.clubName,
-      category: categoryLabels[result.data.category],
+    setSubmitMessage("");
+
+    startTransition(async () => {
+      const submitResult = await submitClubRegistration(form);
+
+      if (!submitResult.ok) {
+        setSubmittedRequest(null);
+        setErrors(submitResult.errors ?? {});
+        setSubmitMessage(submitResult.message);
+        return;
+      }
+
+      setSubmittedRequest({
+        clubName: submitResult.clubName,
+        category: submitResult.category,
+      });
+      setErrors({});
+      setSubmitMessage("");
+      setForm(initialRegistrationInput);
     });
-    setErrors({});
-    setForm(initialRegistrationInput);
   }
 
   function submitRegistration(event: React.FormEvent<HTMLFormElement>) {
@@ -147,38 +166,7 @@ export function ClubRegistrationForm() {
                 Club request
               </h2>
             </div>
-            <button
-              type="button"
-              data-submit-registration="true"
-              onClick={processRegistration}
-              className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2"
-            >
-              <Send aria-hidden="true" className="h-4 w-4" />
-              Submit
-            </button>
           </div>
-
-          {submittedRequest ? (
-            <div className="mt-5 rounded-lg border border-[oklch(0.78_0.09_155)] bg-[oklch(0.96_0.035_155)] p-4 text-[oklch(0.31_0.1_155)]">
-              <p className="flex items-center gap-2 font-bold">
-                <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
-                {submittedRequest.clubName} is ready for admin review.
-              </p>
-              <p className="mt-2 text-sm leading-6">
-                Category: {submittedRequest.category}. The listing remains
-                unpublished until an admin approves it.
-              </p>
-            </div>
-          ) : null}
-
-          {hasErrors ? (
-            <div className="mt-5 rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] p-4 text-[var(--danger)]">
-              <p className="font-bold">Some fields need attention.</p>
-              <p className="mt-1 text-sm leading-6">
-                Check the highlighted fields and submit again.
-              </p>
-            </div>
-          ) : null}
 
           <div className="mt-6 grid gap-5">
             <fieldset className="grid gap-4">
@@ -295,19 +283,52 @@ export function ClubRegistrationForm() {
               />
             </fieldset>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-5">
-              <p className="max-w-md text-sm leading-6 text-[var(--muted)]">
-                Approved requests receive a generated edit code from an admin.
-              </p>
-              <button
-                type="button"
-                data-submit-registration-bottom="true"
-                onClick={processRegistration}
-                className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2"
-              >
-                <Send aria-hidden="true" className="h-4 w-4" />
-                Submit request
-              </button>
+            <div className="grid gap-4 border-t border-[var(--line)] pt-5">
+              {submittedRequest ? (
+                <div className="rounded-lg border border-[oklch(0.78_0.09_155)] bg-[oklch(0.96_0.035_155)] p-4 text-[oklch(0.31_0.1_155)]">
+                  <p className="flex items-center gap-2 font-bold">
+                    <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
+                    {submittedRequest.clubName} is ready for admin review.
+                  </p>
+                  <p className="mt-2 text-sm leading-6">
+                    Category: {submittedRequest.category}. The listing remains
+                    unpublished until an admin approves it.
+                  </p>
+                </div>
+              ) : null}
+
+              {hasErrors ? (
+                <div className="rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] p-4 text-[var(--danger)]">
+                  <p className="font-bold">Some fields need attention.</p>
+                  <p className="mt-1 text-sm leading-6">
+                    {submitMessage ||
+                      "Check the highlighted fields and submit again."}
+                  </p>
+                </div>
+              ) : null}
+
+              {submitMessage && !hasErrors ? (
+                <div className="rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] p-4 text-[var(--danger)]">
+                  <p className="font-bold">Could not submit request.</p>
+                  <p className="mt-1 text-sm leading-6">{submitMessage}</p>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="max-w-md text-sm leading-6 text-[var(--muted)]">
+                  Approved requests receive a generated edit code from an admin.
+                </p>
+                <button
+                  type="button"
+                  data-submit-registration-bottom="true"
+                  onClick={processRegistration}
+                  disabled={isPending}
+                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Send aria-hidden="true" className="h-4 w-4" />
+                  {isPending ? "Submitting" : "Submit request"}
+                </button>
+              </div>
             </div>
           </div>
         </form>

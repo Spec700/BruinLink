@@ -14,7 +14,6 @@ import { useMemo, useState } from "react";
 import {
   categories,
   categoryLabels,
-  clubs,
   type Club,
   type ClubCategory,
 } from "@/lib/clubs";
@@ -37,17 +36,21 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function categoryCount(filter: Filter) {
-  if (filter === "all") {
-    return clubs.length;
-  }
+type ClubDirectoryProps = {
+  clubs: Club[];
+};
 
-  return clubs.filter((club) => club.category === filter).length;
-}
-
-export function ClubDirectory() {
+export function ClubDirectory({ clubs }: ClubDirectoryProps) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<Filter>("all");
+
+  function categoryCount(filter: Filter) {
+    if (filter === "all") {
+      return clubs.length;
+    }
+
+    return clubs.filter((club) => club.category === filter).length;
+  }
 
   const filteredClubs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -63,7 +66,7 @@ export function ClubDirectory() {
         return matchesCategory && matchesQuery;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [activeCategory, query]);
+  }, [activeCategory, query, clubs]);
 
   return (
     <main className="min-h-screen bg-[var(--background)]">

@@ -9,7 +9,14 @@ import {
   Pencil,
   Users,
 } from "lucide-react";
-import { categories, categoryLabels, clubs, getClubBySlug } from "@/lib/clubs";
+import {
+  categories,
+  categoryLabels,
+  fetchVisibleClubBySlug,
+  fetchVisibleClubs,
+} from "@/lib/clubs";
+
+export const dynamic = "force-dynamic";
 
 type ClubPageProps = {
   params: Promise<{
@@ -23,12 +30,6 @@ const statusCopy = {
   "needs update": "Needs attention",
 };
 
-export function generateStaticParams() {
-  return clubs.map((club) => ({
-    slug: club.slug,
-  }));
-}
-
 function initials(name: string) {
   return name
     .split(" ")
@@ -41,13 +42,15 @@ function initials(name: string) {
 
 export default async function ClubDashboardPage({ params }: ClubPageProps) {
   const { slug } = await params;
-  const club = getClubBySlug(slug);
+  const club = await fetchVisibleClubBySlug(slug);
 
   if (!club) {
     notFound();
   }
 
-  const siblingClubs = clubs
+  const allClubs = await fetchVisibleClubs();
+
+  const siblingClubs = allClubs
     .filter((candidate) => candidate.category === club.category)
     .filter((candidate) => candidate.slug !== club.slug)
     .slice(0, 3);
@@ -202,8 +205,9 @@ export default async function ClubDashboardPage({ params }: ClubPageProps) {
                   <span>{categoryLabels[category]}</span>
                   <span>
                     {
-                      clubs.filter((candidate) => candidate.category === category)
-                        .length
+                      allClubs.filter(
+                        (candidate) => candidate.category === category,
+                      ).length
                     }
                   </span>
                 </div>

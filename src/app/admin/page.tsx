@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getAdminSessionState } from "@/app/admin/actions";
 import { AdminReviewPanel } from "@/components/AdminReviewPanel";
 
 export const metadata: Metadata = {
@@ -6,6 +7,8 @@ export const metadata: Metadata = {
   description: "Review BruinLink club registration requests.",
 };
 
-export default function AdminPage() {
-  return <AdminReviewPanel />;
+export default async function AdminPage() {
+  const initialState = await getAdminSessionState();
+
+  return <AdminReviewPanel initialState={initialState} />;
 }

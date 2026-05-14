@@ -18,6 +18,7 @@ export type ClubRegistrationInput = {
 
 export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category"> & {
   id: string;
+  slug: string;
   category: ClubCategory;
   status: ClubRegistrationStatus;
   createdAt: string;
@@ -26,6 +27,7 @@ export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category"> & 
 };
 
 export type ManagedClub = {
+  id: string;
   slug: string;
   name: string;
   category: ClubCategory;
@@ -33,6 +35,11 @@ export type ManagedClub = {
   meetingTime: string;
   location: string;
   visibilityState: ClubVisibilityState;
+};
+
+export type AdminReviewData = {
+  requests: ClubRegistrationRequest[];
+  clubs: ManagedClub[];
 };
 
 export type RegistrationErrors = Partial<

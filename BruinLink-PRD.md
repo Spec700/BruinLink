@@ -640,6 +640,7 @@ Visibility state should support at least:
 - responsible contact name
 - responsible contact email
 - club name
+- derived club slug
 - requested category
 - short description
 - about
@@ -679,6 +680,9 @@ An update log is optional but useful for debugging, demo review, and understandi
 
 - The MVP can store club page sections directly on the club record or in a separate `club_sections` table
 - For the shortest path, storing the required sections directly on the club record is acceptable
+- The current Supabase implementation stores the required page sections directly on the `clubs` row
+- The current Supabase implementation uses two primary tables: `clubs` and `club_registration_requests`
+- The current Supabase implementation constrains categories and request/visibility/status values at the database level
 - The edit code should not be stored as plain visible text in production-like code; storing a hash is preferred if feasible
 - Club registration requests should be stored separately from public club records until approval
 - Approved requests should create a club record in the same shape used by seeded clubs
@@ -716,8 +720,23 @@ flowchart TD
 - pending and rejected club registration requests must not appear publicly
 - admin review actions require the admin password or a validated admin session
 - the admin password must not be committed to the repository
+- the Supabase service-role key must stay server-only and must not be exposed through `NEXT_PUBLIC_` variables or client components
+- public Supabase access should be limited to public-safe reads, such as visible club records
+- privileged admin writes should run through server actions after admin-session validation
 - plaintext edit codes must not be stored in the database
+- forgotten club edit codes should be recovered by admin-triggered regeneration, not by retrieving old plaintext codes
 - existing club deletion from the admin page is permanent and should require confirmation
+
+### Current MVP Access Implementation
+
+- Public directory and club-page reads use the Supabase anon key and row-level security.
+- Public reads only return clubs whose `visibility_state` is `visible`.
+- Registration submissions are validated by a server action and stored as pending `club_registration_requests`.
+- Admin password verification creates an HTTP-only admin session cookie for the admin page.
+- Admin approve, reject, hide, and delete actions use a server-only Supabase service-role client after admin-session validation.
+- Approval is handled by a database RPC so club creation and request approval happen as one database operation.
+- Approval returns the plaintext `BL-XXXX-XXXX` edit code to the admin UI once, while storing only the hash in the database.
+- Admin edit-code regeneration creates a new unique `BL-XXXX-XXXX` code, replaces the stored hash, and returns the new plaintext code to the admin UI once. The previous code stops working immediately.
 
 ### Important Product Risk
 

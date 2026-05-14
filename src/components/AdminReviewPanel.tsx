@@ -4,25 +4,32 @@ import Link from "next/link";
 import {
   ArrowLeft,
   CheckCircle2,
+  Eye,
   EyeOff,
   KeyRound,
   LockKeyhole,
+  Search,
   ShieldCheck,
   Trash2,
   XCircle,
 } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
-import { verifyAdminPassword } from "@/app/admin/actions";
+import {
+  approveRegistrationRequestAction,
+  deleteClubAction,
+  hideClubAction,
+  regenerateClubEditCodeAction,
+  rejectRegistrationRequestAction,
+  unhideClubAction,
+  verifyAdminPassword,
+  type AdminMutationResult,
+  type AdminSessionState,
+} from "@/app/admin/actions";
 import { categoryLabels } from "@/lib/clubs";
-import {
-  getSampleManagedClubs,
-  sampleRegistrationRequests,
-} from "@/lib/adminSamples";
-import {
-  generateEditCode,
-  slugifyClubName,
-  type ClubRegistrationRequest,
-  type ManagedClub,
+import type {
+  AdminReviewData,
+  ClubRegistrationRequest,
+  ManagedClub,
 } from "@/lib/clubRegistration";
 
 type ReviewNotice = {
@@ -32,35 +39,89 @@ type ReviewNotice = {
   code?: string;
 };
 
-export function AdminReviewPanel() {
-  const [password, setPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [isPending, startTransition] = useTransition();
+type AdminReviewPanelProps = {
+  initialState: AdminSessionState;
+};
 
-  const [requests, setRequests] = useState<ClubRegistrationRequest[]>(
-    sampleRegistrationRequests,
+type ClubVisibilityFilter = "all" | "visible" | "hidden";
+
+const emptyData: AdminReviewData = {
+  requests: [],
+  clubs: [],
+};
+
+const clubVisibilityFilters: Array<{
+  value: ClubVisibilityFilter;
+  label: string;
+}> = [
+  { value: "all", label: "All" },
+  { value: "visible", label: "Visible" },
+  { value: "hidden", label: "Hidden" },
+];
+
+export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(
+    initialState.authorized ? "" : (initialState.message ?? ""),
   );
-  const [managedClubs, setManagedClubs] = useState<ManagedClub[]>(
-    getSampleManagedClubs,
+  const [isAuthorized, setIsAuthorized] = useState(initialState.authorized);
+  const [data, setData] = useState<AdminReviewData>(
+    initialState.authorized ? initialState.data : emptyData,
   );
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
-  const [issuedCodes, setIssuedCodes] = useState<string[]>([]);
   const [deleteCandidateSlug, setDeleteCandidateSlug] = useState<string | null>(
     null,
   );
+  const [clubSearchQuery, setClubSearchQuery] = useState("");
+  const [clubVisibilityFilter, setClubVisibilityFilter] =
+    useState<ClubVisibilityFilter>("all");
   const [notice, setNotice] = useState<ReviewNotice | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  const pendingRequests = useMemo(
-    () => requests.filter((request) => request.status === "pending"),
-    [requests],
-  );
+  const pendingRequests = data.requests;
 
   const visibleClubCount = useMemo(
-    () =>
-      managedClubs.filter((club) => club.visibilityState === "visible").length,
-    [managedClubs],
+    () => data.clubs.filter((club) => club.visibilityState === "visible").length,
+    [data.clubs],
   );
+
+  const hiddenClubCount = useMemo(
+    () => data.clubs.filter((club) => club.visibilityState === "hidden").length,
+    [data.clubs],
+  );
+
+  const visibilityFilterCounts: Record<ClubVisibilityFilter, number> = {
+    all: data.clubs.length,
+    visible: visibleClubCount,
+    hidden: hiddenClubCount,
+  };
+
+  const filteredManagedClubs = useMemo(() => {
+    const normalizedQuery = clubSearchQuery.trim().toLowerCase();
+
+    return data.clubs.filter((club) => {
+      const matchesVisibility =
+        clubVisibilityFilter === "all" ||
+        club.visibilityState === clubVisibilityFilter;
+
+      const searchableText = [
+        club.name,
+        club.category,
+        categoryLabels[club.category],
+        club.contactInfo,
+        club.meetingTime,
+        club.location,
+        club.visibilityState,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        matchesVisibility &&
+        (!normalizedQuery || searchableText.includes(normalizedQuery))
+      );
+    });
+  }, [clubSearchQuery, clubVisibilityFilter, data.clubs]);
 
   function submitPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,89 +130,77 @@ export function AdminReviewPanel() {
     startTransition(async () => {
       const result = await verifyAdminPassword(password);
 
-      if (!result.ok) {
-        setPasswordError(result.message);
+      if (!result.authorized) {
+        setPasswordError(result.message ?? "Could not enter admin review.");
         return;
       }
 
       setIsAuthorized(true);
+      setData(result.data);
       setPassword("");
+      setNotice(null);
     });
   }
 
   function approveRequest(request: ClubRegistrationRequest) {
-    const editCode = generateUniqueEditCode(issuedCodes);
-    const reviewedAt = new Date().toISOString();
+    const note = adminNotes[request.id] ?? "";
 
-    setIssuedCodes((current) => [...current, editCode]);
-    setRequests((current) =>
-      current.map((candidate) =>
-        candidate.id === request.id
-          ? {
-              ...candidate,
-              status: "approved",
-              reviewedAt,
-              adminNote: adminNotes[request.id]?.trim() || undefined,
-            }
-          : candidate,
-      ),
+    runAdminMutation(
+      () => approveRegistrationRequestAction(request.id, note),
+      (result) => ({
+        tone: "success",
+        title: `${request.clubName} approved`,
+        body: result.message,
+        code: result.editCode,
+      }),
     );
-    setManagedClubs((current) => [
-      {
-        slug: slugFromRequest(request),
-        name: request.clubName,
-        category: request.category,
-        contactInfo: request.publicContactEmail,
-        meetingTime: request.meetingTime,
-        location: request.meetingLocation,
-        visibilityState: "visible",
-      },
-      ...current,
-    ]);
-    setNotice({
-      tone: "success",
-      title: `${request.clubName} approved`,
-      body: `Share this edit code with ${request.requesterName}. It is shown once in this admin session.`,
-      code: editCode,
-    });
   }
 
   function rejectRequest(request: ClubRegistrationRequest) {
-    setRequests((current) =>
-      current.map((candidate) =>
-        candidate.id === request.id
-          ? {
-              ...candidate,
-              status: "rejected",
-              reviewedAt: new Date().toISOString(),
-              adminNote: adminNotes[request.id]?.trim() || undefined,
-            }
-          : candidate,
-      ),
+    const note = adminNotes[request.id] ?? "";
+
+    runAdminMutation(
+      () => rejectRegistrationRequestAction(request.id, note),
+      (result) => ({
+        tone: "warning",
+        title: `${request.clubName} rejected`,
+        body: result.message,
+      }),
     );
-    setNotice({
-      tone: "warning",
-      title: `${request.clubName} rejected`,
-      body: "The request remains unpublished.",
-    });
   }
 
   function hideClub(club: ManagedClub) {
-    setManagedClubs((current) =>
-      current.map((candidate) =>
-        candidate.slug === club.slug
-          ? {
-              ...candidate,
-              visibilityState: "hidden",
-            }
-          : candidate,
-      ),
+    runAdminMutation(
+      () => hideClubAction(club.slug),
+      (result) => ({
+        tone: "warning",
+        title: `${club.name} hidden`,
+        body: result.message,
+      }),
     );
-    setNotice({
-      tone: "warning",
-      title: `${club.name} hidden`,
-      body: "Hidden clubs stay in the admin list but are removed from public views.",
-    });
+  }
+
+  function unhideClub(club: ManagedClub) {
+    runAdminMutation(
+      () => unhideClubAction(club.slug),
+      (result) => ({
+        tone: "success",
+        title: `${club.name} unhidden`,
+        body: result.message,
+      }),
+    );
+  }
+
+  function regenerateClubCode(club: ManagedClub) {
+    runAdminMutation(
+      () => regenerateClubEditCodeAction(club.slug),
+      (result) => ({
+        tone: "success",
+        title: `${club.name} code regenerated`,
+        body: result.message,
+        code: result.editCode,
+      }),
+    );
   }
 
   function deleteClub(club: ManagedClub) {
@@ -160,19 +209,41 @@ export function AdminReviewPanel() {
       setNotice({
         tone: "warning",
         title: `Confirm deletion for ${club.name}`,
-        body: "Click Confirm delete to permanently remove this club from the admin list.",
+        body: "Click Confirm delete to permanently remove this club.",
       });
       return;
     }
 
-    setManagedClubs((current) =>
-      current.filter((candidate) => candidate.slug !== club.slug),
+    runAdminMutation(
+      () => deleteClubAction(club.slug),
+      (result) => ({
+        tone: "warning",
+        title: `${club.name} deleted`,
+        body: result.message,
+      }),
     );
     setDeleteCandidateSlug(null);
-    setNotice({
-      tone: "warning",
-      title: `${club.name} deleted`,
-      body: "The club was removed from the admin list.",
+  }
+
+  function runAdminMutation(
+    action: () => Promise<AdminMutationResult>,
+    createNotice: (result: Extract<AdminMutationResult, { ok: true }>) => ReviewNotice,
+  ) {
+    startTransition(async () => {
+      const result = await action();
+
+      if (!result.ok) {
+        setNotice({
+          tone: "warning",
+          title: "Admin action failed",
+          body: result.message,
+        });
+        return;
+      }
+
+      setDeleteCandidateSlug(null);
+      setData(result.data);
+      setNotice(createNotice(result));
     });
   }
 
@@ -276,7 +347,7 @@ export function AdminReviewPanel() {
             <div className="grid grid-cols-3 gap-3">
               <Metric label="Pending" value={pendingRequests.length} />
               <Metric label="Visible" value={visibleClubCount} />
-              <Metric label="Total" value={managedClubs.length} />
+              <Metric label="Total" value={data.clubs.length} />
             </div>
           </div>
         </div>
@@ -308,6 +379,7 @@ export function AdminReviewPanel() {
                     key={request.id}
                     request={request}
                     note={adminNotes[request.id] ?? ""}
+                    isPending={isPending}
                     onNoteChange={(value) =>
                       setAdminNotes((current) => ({
                         ...current,
@@ -349,59 +421,81 @@ export function AdminReviewPanel() {
               />
             </div>
 
-            <div className="mt-4 grid max-h-[720px] gap-3 overflow-auto pr-1">
-              {managedClubs.map((club) => (
-                <div
-                  key={club.slug}
-                  className="rounded-lg border border-[var(--line)] bg-[var(--background)] p-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="line-clamp-2 font-bold text-[var(--foreground)]">
-                        {club.name}
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-[var(--ucla-blue)]">
-                        {categoryLabels[club.category]}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
-                        club.visibilityState === "visible"
-                          ? "bg-[oklch(0.96_0.035_155)] text-[oklch(0.31_0.1_155)]"
-                          : "bg-[oklch(0.94_0.045_35)] text-[var(--danger)]"
+            <div className="mt-4 grid gap-3">
+              <label
+                htmlFor="admin-club-search"
+                className="text-sm font-bold text-[var(--foreground)]"
+              >
+                Search clubs
+              </label>
+              <div className="flex h-11 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--background)] px-3 transition focus-within:border-[var(--ucla-blue)]">
+                <Search
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 text-[var(--ucla-blue)]"
+                />
+                <input
+                  id="admin-club-search"
+                  data-admin-club-search
+                  type="search"
+                  value={clubSearchQuery}
+                  onChange={(event) => setClubSearchQuery(event.target.value)}
+                  placeholder="Name, category, email, location"
+                  className="h-full min-w-0 flex-1 bg-transparent text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
+                />
+              </div>
+
+              <div
+                className="grid grid-cols-3 gap-2"
+                aria-label="Filter existing clubs by visibility"
+              >
+                {clubVisibilityFilters.map((filter) => {
+                  const isSelected = clubVisibilityFilter === filter.value;
+
+                  return (
+                    <button
+                      key={filter.value}
+                      type="button"
+                      data-admin-club-filter={filter.value}
+                      onClick={() => setClubVisibilityFilter(filter.value)}
+                      className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2 ${
+                        isSelected
+                          ? "border-[var(--ucla-blue)] bg-[var(--ucla-blue)] text-[var(--ucla-yellow)]"
+                          : "border-[var(--line)] bg-[var(--background)] text-[var(--muted)] hover:border-[var(--ucla-blue)] hover:text-[var(--ucla-blue)]"
                       }`}
                     >
-                      {club.visibilityState}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                    {club.meetingTime} at {club.location}
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      data-hide-club={club.slug}
-                      onClick={() => hideClub(club)}
-                      disabled={club.visibilityState === "hidden"}
-                      className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--foreground)] transition hover:border-[var(--ucla-blue)] hover:text-[var(--ucla-blue)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <EyeOff aria-hidden="true" className="h-4 w-4" />
-                      Hide
+                      <span>{filter.label}</span>
+                      <span aria-label={`${visibilityFilterCounts[filter.value]} clubs`}>
+                        {visibilityFilterCounts[filter.value]}
+                      </span>
                     </button>
-                    <button
-                      type="button"
-                      data-delete-club={club.slug}
-                      onClick={() => deleteClub(club)}
-                      className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] px-3 text-xs font-bold text-[var(--danger)] transition hover:bg-[oklch(0.94_0.05_25)]"
-                    >
-                      <Trash2 aria-hidden="true" className="h-4 w-4" />
-                      {deleteCandidateSlug === club.slug
-                        ? "Confirm delete"
-                        : "Delete"}
-                    </button>
-                  </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-4 grid max-h-[720px] gap-3 overflow-auto pr-1">
+              {data.clubs.length === 0 ? (
+                <div className="rounded-lg bg-[var(--surface-strong)] p-4 text-sm font-bold text-[var(--muted)]">
+                  No clubs have been created yet.
                 </div>
-              ))}
+              ) : filteredManagedClubs.length > 0 ? (
+                filteredManagedClubs.map((club) => (
+                  <ManagedClubCard
+                    key={club.slug}
+                    club={club}
+                    deleteCandidateSlug={deleteCandidateSlug}
+                    isPending={isPending}
+                    onHide={() => hideClub(club)}
+                    onUnhide={() => unhideClub(club)}
+                    onRegenerateCode={() => regenerateClubCode(club)}
+                    onDelete={() => deleteClub(club)}
+                  />
+                ))
+              ) : (
+                <div className="rounded-lg bg-[var(--surface-strong)] p-4 text-sm font-bold text-[var(--muted)]">
+                  No clubs match the current search and filters.
+                </div>
+              )}
             </div>
           </section>
         </aside>
@@ -424,12 +518,14 @@ function Metric({ label, value }: { label: string; value: number }) {
 function RequestCard({
   request,
   note,
+  isPending,
   onNoteChange,
   onApprove,
   onReject,
 }: {
   request: ClubRegistrationRequest;
   note: string;
+  isPending: boolean;
   onNoteChange: (value: string) => void;
   onApprove: () => void;
   onReject: () => void;
@@ -456,7 +552,8 @@ function RequestCard({
             type="button"
             data-approve-request={request.id}
             onClick={onApprove}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-3 text-xs font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2"
+            disabled={isPending}
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-3 text-xs font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
             Approve
@@ -465,7 +562,8 @@ function RequestCard({
             type="button"
             data-reject-request={request.id}
             onClick={onReject}
-            className="inline-flex h-9 items-center gap-2 rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] px-3 text-xs font-bold text-[var(--danger)] transition hover:bg-[oklch(0.94_0.05_25)] focus:outline-none focus:ring-2 focus:ring-[var(--danger)] focus:ring-offset-2"
+            disabled={isPending}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] px-3 text-xs font-bold text-[var(--danger)] transition hover:bg-[oklch(0.94_0.05_25)] focus:outline-none focus:ring-2 focus:ring-[var(--danger)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <XCircle aria-hidden="true" className="h-4 w-4" />
             Reject
@@ -517,7 +615,8 @@ function RequestCard({
         <button
           type="button"
           onClick={onApprove}
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2"
+          disabled={isPending}
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
           Approve
@@ -525,13 +624,109 @@ function RequestCard({
         <button
           type="button"
           onClick={onReject}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] px-4 text-sm font-bold text-[var(--danger)] transition hover:bg-[oklch(0.94_0.05_25)] focus:outline-none focus:ring-2 focus:ring-[var(--danger)] focus:ring-offset-2"
+          disabled={isPending}
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] px-4 text-sm font-bold text-[var(--danger)] transition hover:bg-[oklch(0.94_0.05_25)] focus:outline-none focus:ring-2 focus:ring-[var(--danger)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <XCircle aria-hidden="true" className="h-4 w-4" />
           Reject
         </button>
       </div>
     </article>
+  );
+}
+
+function ManagedClubCard({
+  club,
+  deleteCandidateSlug,
+  isPending,
+  onHide,
+  onUnhide,
+  onRegenerateCode,
+  onDelete,
+}: {
+  club: ManagedClub;
+  deleteCandidateSlug: string | null;
+  isPending: boolean;
+  onHide: () => void;
+  onUnhide: () => void;
+  onRegenerateCode: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--background)] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="line-clamp-2 font-bold text-[var(--foreground)]">
+            {club.name}
+          </p>
+          <p className="mt-1 text-sm font-bold text-[var(--ucla-blue)]">
+            {categoryLabels[club.category]}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${
+            club.visibilityState === "visible"
+              ? "bg-[oklch(0.96_0.035_155)] text-[oklch(0.31_0.1_155)]"
+              : "bg-[oklch(0.94_0.045_35)] text-[var(--danger)]"
+          }`}
+        >
+          {club.visibilityState}
+        </span>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+        {club.meetingTime} at {club.location}
+      </p>
+      <p className="truncate text-xs leading-5 text-[var(--muted)]">
+        {club.contactInfo}
+      </p>
+      <div className="mt-3 grid gap-2">
+        <button
+          type="button"
+          data-regenerate-club-code={club.slug}
+          onClick={onRegenerateCode}
+          disabled={isPending}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--foreground)] transition hover:border-[var(--ucla-blue)] hover:text-[var(--ucla-blue)] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <KeyRound aria-hidden="true" className="h-4 w-4" />
+          Regenerate code
+        </button>
+        <div className="flex gap-2">
+          {club.visibilityState === "visible" ? (
+            <button
+              type="button"
+              data-hide-club={club.slug}
+              onClick={onHide}
+              disabled={isPending}
+              className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--foreground)] transition hover:border-[var(--ucla-blue)] hover:text-[var(--ucla-blue)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <EyeOff aria-hidden="true" className="h-4 w-4" />
+              Hide
+            </button>
+          ) : (
+            <button
+              type="button"
+              data-unhide-club={club.slug}
+              onClick={onUnhide}
+              disabled={isPending}
+              className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-[oklch(0.78_0.09_155)] bg-[oklch(0.96_0.035_155)] px-3 text-xs font-bold text-[oklch(0.31_0.1_155)] transition hover:bg-[oklch(0.94_0.045_155)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Eye aria-hidden="true" className="h-4 w-4" />
+              Unhide
+            </button>
+          )}
+          <button
+            type="button"
+            data-delete-club={club.slug}
+            onClick={onDelete}
+            disabled={isPending}
+            className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-[oklch(0.8_0.08_25)] bg-[oklch(0.96_0.035_25)] px-3 text-xs font-bold text-[var(--danger)] transition hover:bg-[oklch(0.94_0.05_25)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Trash2 aria-hidden="true" className="h-4 w-4" />
+            {deleteCandidateSlug === club.slug ? "Confirm delete" : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -583,20 +778,6 @@ function Notice({
       ) : null}
     </section>
   );
-}
-
-function generateUniqueEditCode(existingCodes: string[]) {
-  let code = generateEditCode();
-
-  while (existingCodes.includes(code)) {
-    code = generateEditCode();
-  }
-
-  return code;
-}
-
-function slugFromRequest(request: ClubRegistrationRequest) {
-  return slugifyClubName(request.clubName);
 }
 
 function formatDate(value: string) {

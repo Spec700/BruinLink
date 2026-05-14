@@ -1,15 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays, MapPin, Search, Users } from "lucide-react";
+import {
+  ArrowUpRight,
+  Building2,
+  CalendarDays,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   categories,
   categoryLabels,
-  clubs,
   type Club,
   type ClubCategory,
 } from "@/lib/clubs";
+import {
+  clubStatusLabels,
+  formatLastUpdated,
+} from "@/lib/clubFreshness";
 
 type Filter = "all" | ClubCategory;
 
@@ -29,17 +40,21 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-function categoryCount(filter: Filter) {
-  if (filter === "all") {
-    return clubs.length;
-  }
+type ClubDirectoryProps = {
+  clubs: Club[];
+};
 
-  return clubs.filter((club) => club.category === filter).length;
-}
-
-export function ClubDirectory() {
+export function ClubDirectory({ clubs }: ClubDirectoryProps) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<Filter>("all");
+
+  function categoryCount(filter: Filter) {
+    if (filter === "all") {
+      return clubs.length;
+    }
+
+    return clubs.filter((club) => club.category === filter).length;
+  }
 
   const filteredClubs = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -55,7 +70,7 @@ export function ClubDirectory() {
         return matchesCategory && matchesQuery;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [activeCategory, query]);
+  }, [activeCategory, query, clubs]);
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
@@ -76,15 +91,31 @@ export function ClubDirectory() {
               </div>
             </div>
 
-            <div className="max-w-3xl">
-              <p className="mb-3 inline-flex rounded-full bg-[var(--ucla-yellow-soft)] px-3 py-1 text-sm font-bold text-[oklch(0.35_0.1_73)]">
-                Spring club directory
-              </p>
-              <h1 className="font-display text-4xl font-extrabold leading-tight text-[var(--foreground)] sm:text-5xl">
-                Find the right student organization before the next meeting.
-              </h1>
+              <div className="max-w-3xl">
+                <p className="mb-3 inline-flex rounded-full bg-[var(--ucla-yellow-soft)] px-3 py-1 text-sm font-bold text-[oklch(0.35_0.1_73)]">
+                  Spring club directory
+                </p>
+                <h1 className="font-display text-4xl font-extrabold leading-tight text-[var(--foreground)] sm:text-5xl">
+                  Find the right student organization before the next meeting.
+                </h1>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/register"
+                    className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2"
+                  >
+                    <Building2 aria-hidden="true" className="h-4 w-4" />
+                    Register a club
+                  </Link>
+                  <Link
+                    href="/admin"
+                    className="inline-flex h-11 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--background)] px-4 text-sm font-bold text-[var(--foreground)] transition hover:border-[var(--ucla-blue)] hover:text-[var(--ucla-blue)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2"
+                  >
+                    <ShieldCheck aria-hidden="true" className="h-4 w-4" />
+                    Admin
+                  </Link>
+                </div>
+              </div>
             </div>
-          </div>
 
           <div className="grid grid-cols-3 gap-3 lg:grid-cols-1">
             <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] p-4">
@@ -235,11 +266,16 @@ export function ClubDirectory() {
                         <span className="min-w-0 truncate">{club.location}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2 pt-2">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone[club.status]}`}
-                        >
-                          {club.status}
-                        </span>
+                        <div className="min-w-0">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone[club.status]}`}
+                          >
+                            {clubStatusLabels[club.status]}
+                          </span>
+                          <p className="mt-2 truncate text-xs font-bold text-[var(--muted)]">
+                            {formatLastUpdated(club.lastEditedAt)}
+                          </p>
+                        </div>
                         <span className="flex items-center gap-1 text-sm font-bold text-[var(--foreground)]">
                           <Users
                             aria-hidden="true"

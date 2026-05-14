@@ -20,16 +20,18 @@ This document also distinguishes between:
 
 ## 2. Product Summary
 
-BruinLink is a web application with two equally important goals:
+BruinLink is a web application with two core goals and one supporting control flow:
 
 1. Help students discover UCLA clubs through a centralized public directory
 2. Help club representatives keep their club pages current through a simple management dashboard
+3. Let new clubs request a listing, while keeping publication behind admin approval
 
 The core idea is to replace fragmented, outdated club information with one centralized platform where:
 
 - students can browse, search, and filter clubs
 - each club has a dedicated public profile page
 - club representatives can update their club information without editing code
+- new club listing requests can be reviewed before becoming public
 - public club pages are rendered from structured database content
 
 The revised MVP does **not** include AI-generated content. Club representatives manually edit structured page fields in a dashboard, and saved changes appear immediately on the public club page.
@@ -45,6 +47,8 @@ The MVP solves this by:
 - centralizing club discovery in one public-facing directory
 - providing each club with a dedicated public page
 - giving club representatives a simple dashboard for updating their own page content
+- giving prospective club representatives a controlled way to request a new listing
+- giving admins a simple approval gate before new clubs appear publicly
 - storing club content in a database so public pages update without code changes
 
 ## 4. Product Vision for the MVP
@@ -60,7 +64,16 @@ The MVP should demonstrate the following end-to-end story:
 7. The representative saves the changes
 8. The updated information appears immediately on the public-facing club page
 
-If the project successfully demonstrates that loop, the MVP has delivered its primary value proposition.
+The MVP should also demonstrate a second bounded story:
+
+1. A prospective club representative opens a club registration form
+2. The representative submits club details and a responsible contact person
+3. The request is stored as pending, not published immediately
+4. An admin reviews the request from a protected admin page
+5. The admin approves or rejects the request
+6. Approved requests become public club records; rejected requests remain unpublished
+
+If the project successfully demonstrates both loops, the MVP has delivered its primary value proposition.
 
 ## 5. Product Goals
 
@@ -73,11 +86,15 @@ If the project successfully demonstrates that loop, the MVP has delivered its pr
 - Allow a club representative to access a club-specific dashboard
 - Allow a club representative to manually edit public club content
 - Publish successful dashboard edits immediately to the public club page
+- Allow prospective club representatives to submit new club listing requests
+- Allow an admin to approve or reject pending club listing requests
+- Prevent unapproved club requests from appearing in the public directory
 
 ### Secondary Goals
 
 - Support club image or logo uploads if time allows
 - Support a basic preview of the public club page from the dashboard
+- Support email notification to an admin after a registration request if time allows
 - Leave space for future UCLA email login and club-claim verification
 
 ### Non-Goals for This MVP
@@ -88,7 +105,7 @@ If the project successfully demonstrates that loop, the MVP has delivered its pr
 - Student accounts
 - Favorites or personalized saved club lists
 - Multi-admin club management
-- Admin moderation workflows
+- Admin moderation workflows beyond basic club request review and club visibility control
 - Full club ownership verification
 - Social media scraping
 - Complex event management systems
@@ -121,6 +138,20 @@ Club representative MVP needs:
 
 For the MVP, club representatives are authorized through a **per-club edit code**, not through full UCLA email authentication.
 
+### User Type 3: Admins
+
+Admins are project/team users who need to keep public club listings controlled.
+
+Admin MVP needs:
+
+- a protected admin page
+- visibility into pending club registration requests
+- approve and reject controls for pending requests
+- the ability to remove or hide clubs from the public directory if needed
+- no dependence on email delivery for the core approval flow
+
+For the MVP, admin access may use a single admin password stored outside the codebase, such as an environment variable. This admin password is separate from club representative edit codes and should not grant public users edit access to every club page.
+
 ## 7. Confirmed Product Decisions
 
 The following decisions are considered settled for this revised MVP:
@@ -149,8 +180,16 @@ The following decisions are considered settled for this revised MVP:
 - The dashboard should allow manual editing of club page content
 - Successful dashboard edits should publish immediately
 - Public club pages should render from database content, not static hard-coded page files
-- The MVP should focus on **pre-seeded club records** rather than a complete club-creation workflow
+- The MVP should start with **pre-seeded club records** and support admin-approved club registration requests
+- Public users may submit new club registration requests, but those requests must not become public clubs until an admin approves them
+- A protected admin page should allow pending club requests to be approved or rejected
+- The first admin page should also allow admins to hide or permanently delete existing clubs
+- The registration form should collect a responsible contact person's name and email for admin review
+- The registration form should not collect student ID in the baseline MVP unless the team or instructor explicitly requires it
 - Club access should use a **per-club edit code** for the primary MVP
+- Approved registration requests should automatically generate a unique random edit code in `BL-XXXX-XXXX` format, where each `X` is an uppercase letter or digit
+- Admin request approval is distinct from club representative edit-code access
+- Email notification after registration submission is optional; the admin page is the required MVP review surface
 - A UCLA email login plus club claim code flow may be documented as a future or time-permitting extension
 - Image support is in scope only as a **secondary, time-permitting extension**
 
@@ -188,6 +227,14 @@ Open questions:
 - Should the dashboard support a gallery image upload?
 - Should the MVP skip uploads entirely and use static/default images?
 
+### 8.4 Admin Review Details
+
+The MVP now includes admin-reviewed club registration requests, but some demo details still need team alignment.
+
+Open questions:
+
+- Who owns the final seeded club list for the demo?
+
 ## 9. MVP Functional Requirements
 
 ### 9.1 Public Directory
@@ -214,6 +261,8 @@ Required content:
 
 - club name
 - category
+- freshness status
+- last updated timestamp/copy
 - short description
 - About
 - Upcoming Events
@@ -221,6 +270,14 @@ Required content:
 - Contact Information
 
 The page should render content from the database and update when backend content changes.
+
+Freshness status should be derived from the club's most recent edit time:
+
+- `fresh`: last edited within 3 days
+- `current`: last edited more than 3 days ago and no more than 14 days ago
+- `needs update`: last edited more than 14 days ago
+
+The public UI should show a `Last updated: ...` indicator so students can judge how current the listing is.
 
 ### 9.3 Dashboard Access With Per-Club Edit Code
 
@@ -294,6 +351,55 @@ If time does not allow:
 
 - the MVP should still be considered successful without image upload support
 
+### 9.8 Club Registration Request
+
+The homepage should provide a clear entry point for prospective club representatives to request a new club listing.
+
+The registration form should create a pending request, not a public club.
+
+Required request fields:
+
+- responsible contact person's name
+- responsible contact person's email
+- club name
+- category
+- short description
+- About
+- meeting time
+- meeting location
+- public student contact email
+
+Optional request fields, if time allows:
+
+- Upcoming Events
+- Announcements
+
+Fields should be validated before submission. Invalid submissions should not create pending requests.
+
+### 9.9 Admin Review Page
+
+The MVP should include a protected admin page for reviewing club registration requests.
+
+Required behavior:
+
+- admin enters the admin password before viewing requests
+- pending requests are listed with all submitted fields
+- admin can approve a pending request
+- admin can reject a pending request
+- rejection notes are optional
+- approved requests create public club records with blank Upcoming Events and Announcements sections
+- approved requests automatically generate a unique random edit code in `BL-XXXX-XXXX` format
+- the generated plaintext edit code is shown to the admin once so it can be distributed to the responsible contact
+- rejected requests remain unpublished
+- admin can hide existing clubs from the public directory
+- admin can permanently delete existing clubs
+- public directory and public club pages show only approved, visible clubs
+
+Optional behavior, if time allows:
+
+- admin can add an internal review note
+- admin receives an email notification when a new request is submitted
+
 ## 10. MVP User Flows
 
 ### 10.1 Student Discovery Flow
@@ -321,6 +427,25 @@ If time does not allow:
 5. Valid content is saved to the database
 6. Public club page reflects the updated content
 
+### 10.4 Club Registration Request Flow
+
+1. Prospective club representative opens the homepage registration entry point
+2. Representative fills out required club and contact fields
+3. Representative submits the form
+4. Backend validates the submitted fields
+5. Valid request is stored with status `pending`
+6. The request does not appear in the public directory
+
+### 10.5 Admin Approval Flow
+
+1. Admin opens the protected admin page
+2. Admin enters the admin password
+3. Backend validates admin access
+4. Admin reviews pending club registration requests
+5. Admin approves or rejects a request
+6. Approved request becomes a public club record
+7. Rejected request remains unpublished
+
 ## 11. Product Architecture Principles
 
 The MVP should follow these principles:
@@ -328,6 +453,7 @@ The MVP should follow these principles:
 - **Use structured storage.** The website should render from database fields, not hard-coded page content.
 - **Prefer the shortest reliable path.** Use the simplest architecture that supports the demo and preserves correctness.
 - **Make the access model explicit.** Per-club edit codes are an MVP simplification, not a complete real-world ownership solution.
+- **Gate new public records.** Public users may request club listings, but only admins may publish them.
 - **Avoid unnecessary dependencies.** The MVP should not depend on AI APIs, LLM orchestration, or email infrastructure unless the team later chooses to add them.
 - **Preserve content integrity.** Invalid submissions must not corrupt existing club content.
 - **Separate confirmed decisions from future extensions.** The implementation should not hide unresolved club-verification issues.
@@ -350,11 +476,14 @@ Primary MVP approach:
 
 - per-club edit codes verified by the backend
 - dashboard access scoped to the selected club
+- admin password for the protected request review page
+- admin approval required before new registration requests become public clubs
 
 Future or time-permitting approach:
 
 - Supabase Auth with UCLA email verification
 - club claim code to connect a verified user to a pre-seeded club
+- email notification when a registration request is submitted
 
 ## 13. High-Level System Architecture
 
@@ -362,27 +491,33 @@ Future or time-permitting approach:
 flowchart TD
     A[Student Browser] --> B[Next.js Web App]
     C[Club Representative Browser] --> B
+    K[Admin Browser] --> B
 
     B --> D[Public Directory UI]
     B --> E[Public Club Page UI]
     B --> F[Dashboard Access UI]
+    B --> M[Club Registration Form]
+    B --> N[Admin Review UI]
     F --> G[Private Club Dashboard UI]
     G --> H[Next.js Backend / Server Actions or API Routes]
+    M --> H
+    N --> H
 
     H --> I[Supabase Postgres]
     H --> J[Supabase Storage]
 
     I --> D
     I --> E
+    I --> N
     J -. optional image support .-> E
 ```
 
 ### Architecture Notes
 
-- The frontend is responsible for public browsing, search, filtering, and dashboard forms
-- Supabase Postgres stores club records, page content, categories, and edit-code metadata
-- The backend validates edit codes and form submissions before writing content
-- Public pages read from persisted database state
+- The frontend is responsible for public browsing, search, filtering, registration forms, admin review surfaces, and dashboard forms
+- Supabase Postgres stores club records, page content, categories, edit-code metadata, and club registration requests
+- The backend validates edit codes, admin access, request submissions, and update submissions before writing content
+- Public pages read only approved, visible club records from persisted database state
 - Supabase Storage is only needed if image support is implemented
 
 ## 14. Dashboard Update Pipeline
@@ -452,16 +587,28 @@ This is a suggested logical structure, not a locked implementation detail.
 
 - `/` - homepage club directory
 - `/clubs/[slug]` - public club page
+- `/register` or a homepage modal - public club registration request form
 
 ### Dashboard Routes
 
 - `/dashboard` - dashboard access page
 - `/dashboard/[clubSlug]` - private club dashboard after valid access
 
+### Admin Routes
+
+- `/admin` - protected admin page for reviewing club registration requests
+
 ### Logical Backend Operations
 
 - fetch public club directory
 - fetch single club page by slug
+- submit club registration request
+- verify admin password/session
+- fetch pending club registration requests
+- approve club registration request
+- reject club registration request
+- hide an existing club
+- permanently delete an existing club
 - verify club edit code
 - fetch editable club dashboard data
 - submit club profile update
@@ -488,6 +635,34 @@ The MVP should keep the data model simple and aligned with the confirmed product
 - public visibility state
 - optional logo/image URL
 - edit code hash
+- last edited timestamp
+- created timestamp
+- updated timestamp
+
+Visibility state should support at least:
+
+- visible
+- hidden
+
+**Club Registration Requests**
+
+- id
+- responsible contact name
+- responsible contact email
+- club name
+- derived club slug
+- requested category
+- short description
+- about
+- meeting time
+- meeting location
+- public student contact email
+- optional verification link or notes
+- optional upcoming events
+- optional announcements
+- status: pending, approved, or rejected
+- admin review note
+- reviewed timestamp
 - created timestamp
 - updated timestamp
 
@@ -515,8 +690,16 @@ An update log is optional but useful for debugging, demo review, and understandi
 
 - The MVP can store club page sections directly on the club record or in a separate `club_sections` table
 - For the shortest path, storing the required sections directly on the club record is acceptable
+- The current Supabase implementation stores the required page sections directly on the `clubs` row
+- The current Supabase implementation uses two primary tables: `clubs` and `club_registration_requests`
+- The current Supabase implementation constrains categories and request/visibility/status values at the database level
+- Club freshness should be calculated from `last_edited_at`; a stored `status` value may exist for compatibility, but displayed freshness should not depend on stale manual status values
 - The edit code should not be stored as plain visible text in production-like code; storing a hash is preferred if feasible
-- Club creation can be skipped for the MVP by seeding club records in the database
+- Club registration requests should be stored separately from public club records until approval
+- Approved requests should create a club record in the same shape used by seeded clubs
+- Approved requests should generate a random edit code in `BL-XXXX-XXXX` format and store only its hash
+- Approved requests should initialize Upcoming Events and Announcements as blank sections
+- Rejected requests should remain unavailable to the public directory and public club pages
 
 ## 18. Data Relationship Diagram
 
@@ -529,6 +712,9 @@ flowchart TD
     D --> U[Dashboard Update]
     U --> C
     U --> L[Optional Update Log]
+    R[Club Registration Request] --> A[Admin Review]
+    A -->|approve| C
+    A -->|reject| X[Unpublished Request]
 ```
 
 ## 19. Security and Access Considerations
@@ -541,6 +727,27 @@ flowchart TD
 - dashboard writes must be scoped to the selected club only
 - invalid edit codes must not expose editable club data
 - invalid form submissions must not overwrite existing content
+- public club registration submissions must create pending requests only
+- pending and rejected club registration requests must not appear publicly
+- admin review actions require the admin password or a validated admin session
+- the admin password must not be committed to the repository
+- the Supabase service-role key must stay server-only and must not be exposed through `NEXT_PUBLIC_` variables or client components
+- public Supabase access should be limited to public-safe reads, such as visible club records
+- privileged admin writes should run through server actions after admin-session validation
+- plaintext edit codes must not be stored in the database
+- forgotten club edit codes should be recovered by admin-triggered regeneration, not by retrieving old plaintext codes
+- existing club deletion from the admin page is permanent and should require confirmation
+
+### Current MVP Access Implementation
+
+- Public directory and club-page reads use the Supabase anon key and row-level security.
+- Public reads only return clubs whose `visibility_state` is `visible`.
+- Registration submissions are validated by a server action and stored as pending `club_registration_requests`.
+- Admin password verification creates an HTTP-only admin session cookie for the admin page.
+- Admin approve, reject, hide, and delete actions use a server-only Supabase service-role client after admin-session validation.
+- Approval is handled by a database RPC so club creation and request approval happen as one database operation.
+- Approval returns the plaintext `BL-XXXX-XXXX` edit code to the admin UI once, while storing only the hash in the database.
+- Admin edit-code regeneration creates a new unique `BL-XXXX-XXXX` code, replaces the stored hash, and returns the new plaintext code to the admin UI once. The previous code stops working immediately.
 
 ### Important Product Risk
 
@@ -558,6 +765,8 @@ Per-club edit codes preserve a clearer relationship:
 one club -> one edit code -> one dashboard scope
 ```
 
+The protected admin page is a separate system-level surface. It may use one admin password for the class-project MVP because it is explicitly for team-admin review and control, not for club representatives editing arbitrary clubs.
+
 ## 20. Reliability and Correctness Requirements
 
 The MVP should favor correctness over complexity.
@@ -568,6 +777,12 @@ Required behaviors:
 - saved dashboard edits must persist in the database
 - public pages must read from persisted database state
 - invalid form submissions must not overwrite existing content
+- club registration requests must be validated before becoming pending records
+- pending and rejected registration requests must not affect public search/filter results
+- approving a request should create exactly one public club record
+- approving a request should create exactly one unique edit code in `BL-XXXX-XXXX` format
+- hiding a club should remove it from public reads without deleting the club row
+- deleting a club should permanently remove the selected club
 - search and filtering should operate against stored club metadata
 - categories should be constrained to the five confirmed MVP categories
 
@@ -596,8 +811,9 @@ These items should not drive MVP architecture complexity, but the PRD acknowledg
 - UCLA email login through Supabase Auth
 - club claim code flow that links a verified UCLA email to a club
 - full club ownership verification
-- admin approval for new club claims
 - club creation from the dashboard
+- multi-admin roles and permissions
+- automated email approval links
 - student accounts
 - favorites
 - multi-admin club ownership
@@ -634,6 +850,11 @@ The class-project MVP should be considered successful if the team can demonstrat
 6. The dashboard shows editable content for that club only
 7. The representative can edit and save club profile fields
 8. The public club page reflects the saved changes immediately
+9. A prospective club representative can submit a new club registration request
+10. An admin can review, approve, or reject the request
+11. An approved request appears as a public club; rejected and pending requests do not
+12. Approved requests produce a unique `BL-XXXX-XXXX` edit code for admin distribution
+13. Admin can hide or permanently delete an existing club
 
 Image support and UCLA email login are bonuses, not requirements for MVP success.
 
@@ -644,11 +865,13 @@ To preserve the shortest reliable path to MVP, the build order should logically 
 1. Public club directory and public club pages
 2. Supabase database schema and seeded club records
 3. Category search/filter behavior
-4. Per-club edit code verification
-5. Private dashboard for editing one club
-6. Immediate database-backed publishing
-7. Optional image support
-8. Optional UCLA email login plus club claim code
+4. Club registration request form and pending request storage
+5. Protected admin review page with approve/reject/hide/delete controls
+6. Per-club edit code verification
+7. Private dashboard or edit mode for editing one club
+8. Immediate database-backed publishing
+9. Optional image support
+10. Optional UCLA email login plus club claim code
 
 ## 26. Final Recommendation Summary
 
@@ -661,6 +884,7 @@ For the MVP, the team should prioritize:
 - public club pages rendered from database content
 - a simple per-club edit-code access model
 - a dashboard for manual club profile updates
+- admin-reviewed new club registration requests
 - immediate publishing after successful saves
 
 This gives the team the shortest path to a convincing, coherent final project while keeping the architecture logically correct and manageable.
@@ -674,4 +898,3 @@ The following decisions still need team resolution before implementation is full
 3. How should demo edit codes be distributed during presentation?
 4. Should image upload be included or skipped for the final demo?
 5. Should update logs be implemented, or skipped to keep the MVP smaller?
-

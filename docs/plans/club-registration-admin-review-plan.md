@@ -520,6 +520,130 @@ Implementation checkpoint:
 - Completed: disposable verification club and request rows were removed after testing.
 - Final verification state after cleanup: 16 total clubs, 16 visible clubs, 0 hidden clubs, 1 approved historical registration request, and 0 pending requests.
 
+## Planned Per-Club Edit Mode - May 14, 2026
+
+User goal:
+
+- A club representative should be able to open a club page, click a top-right management button, enter that club's `BL-XXXX-XXXX` edit code, and edit only that club's public listing.
+- This is the teammate-owned feature direction, but the current branch is ready to continue it because the database already stores `clubs.edit_code_hash` and admin regeneration can create known demo codes.
+
+Current implementation facts:
+
+- Public club pages are rendered from Supabase via `fetchVisibleClubBySlug`.
+- The current schema stores only `clubs.edit_code_hash`, never plaintext edit codes.
+- The existing `hashEditCode()` helper normalizes and hashes `BL-XXXX-XXXX` submissions.
+- The admin page can regenerate a known code for any fake/seeded club, which makes end-to-end testing possible.
+- No club representative session/auth code exists yet.
+
+Hash verification model:
+
+1. User submits an edit code for a specific club slug.
+2. Server validates the format with `isEditCodeFormat`.
+3. Server normalizes and hashes the submitted code with `hashEditCode()`.
+4. Server fetches the target club's stored `edit_code_hash` with the service-role client.
+5. Server compares the submitted hash to the stored hash.
+6. If the hashes match, the code is valid for that club.
+7. The plaintext edit code is never stored or returned by the verification action.
+
+Recommended route and naming:
+
+- Public page remains `/clubs/[slug]`.
+- Club representative edit page should be `/clubs/[slug]/edit`.
+- Use "Manage listing" or "Edit listing" in UI copy rather than "Admin", because `/admin` is reserved for system-level admin review.
+
+Recommended user workflow:
+
+1. A club representative visits `/clubs/[slug]`.
+2. They click `Manage listing` in the top-right area of the club page header.
+3. The page opens an inline prompt or compact panel asking for the club edit code.
+4. They enter `BL-XXXX-XXXX`.
+5. A server action verifies the submitted code against `clubs.edit_code_hash`.
+6. On success, the server sets an HTTP-only club edit session scoped to that club slug.
+7. The user is redirected to `/clubs/[slug]/edit`.
+8. The edit page visibly shows an edit-mode state.
+9. Editable sections expose pencil/edit controls.
+10. Saving a section updates Supabase and revalidates the public club page.
+11. The public `/clubs/[slug]` page reflects saved changes immediately.
+
+Recommended editable MVP fields:
+
+- Header/profile:
+  - `short_description`
+  - `about`
+- Content sections:
+  - `upcoming_events`
+  - `announcements`
+- Status/details card:
+  - `meeting_time`
+  - `location`
+  - `members`
+  - `contact_info`
+
+Fields that should stay admin-controlled for MVP:
+
+- `name`
+- `slug`
+- `category`
+- `visibility_state`
+- `edit_code_hash`
+- registration request history
+- permanent delete/hide
+
+Recommended session behavior:
+
+- Add a server-only club edit auth helper similar to `adminAuth`.
+- Store an HTTP-only cookie scoped to `/clubs/[slug]`.
+- The cookie should prove access to one club only, not every club.
+- Session tokens should be derived from the slug and current `edit_code_hash`, so regenerating a club's edit code invalidates old edit sessions.
+- Use a limited max age, likely 4 hours to match the current admin session duration.
+- `/clubs/[slug]/edit` should require this scoped session and redirect back to `/clubs/[slug]` if the user is not authorized.
+- Optional but useful: provide an `Exit edit mode` action that clears the scoped cookie.
+
+Recommended save behavior:
+
+- Use server actions for all club updates.
+- Each save action must call `requireClubEditSession(slug)` before writing.
+- Use the service-role client only inside server actions.
+- Validate and trim submitted fields before writing.
+- Validate `members` as an integer greater than or equal to 0.
+- Validate `contact_info` as an email for the MVP because the current UI treats it as contact email.
+- On save, update `last_edited_at = now()`.
+- On save, set `status = 'fresh'` for now, unless teammate's database-driven freshness trigger lands first.
+- Revalidate `/`, `/clubs/[slug]`, and `/clubs/[slug]/edit` after a successful save.
+
+Recommended UI structure:
+
+- Add a `Manage listing` button in the top-right hero space shown in the screenshot.
+- Build a client component for the code prompt so the public page can stay mostly server-rendered.
+- Build `/clubs/[slug]/edit` to resemble the public page, but with:
+  - an edit-mode badge
+  - a link back to the public page
+  - pencil buttons for editable cards/sections
+  - inline section forms with `Save` and `Cancel`
+  - success/error feedback per save
+- Editing the details/status card should expose fields for meeting time, location, listed members, and public contact email.
+- Editing content cards should expose textarea fields for About, Upcoming Events, and Announcements.
+
+Implementation sequence:
+
+1. Add club edit session helpers in a new server-only module.
+2. Add a server action to verify a club edit code and set the scoped edit session.
+3. Add a `Manage listing` entry point and edit-code prompt to `/clubs/[slug]`.
+4. Add `/clubs/[slug]/edit` route guarded by the scoped session.
+5. Add server actions for updating profile/content/details fields.
+6. Add edit-mode UI with section-level edit buttons and inline forms.
+7. Verify invalid edit code is rejected and does not create a session.
+8. Use admin `Regenerate code` to create a known code for a fake/seeded club.
+9. Verify valid code redirects to `/clubs/[slug]/edit`.
+10. Verify saving each editable section persists to Supabase and updates the public page.
+11. Verify regenerated edit code invalidates the previous club edit session.
+
+Open implementation questions before greenlight:
+
+- Should the entry button say `Manage listing`, `Edit listing`, or `Club sign in`?
+- Should a club edit session last 4 hours like admin sessions, or should it be shorter?
+- Should editing happen only on `/clubs/[slug]/edit`, or should valid users return to the public page with inline edit controls there?
+
 ## Security Notes
 
 - Do not commit the admin password.

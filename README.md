@@ -2,6 +2,8 @@
 
 BruinLink is a CS35L MVP prototype for UCLA club discovery and club dashboard views. The current version uses local dummy club data while the team develops the UI before wiring Supabase.
 
+## npm install @mui/x-date-pickers @mui/material @emotion/react @emotion/styled dayjs ?
+
 ## Local Development
 
 Install dependencies:

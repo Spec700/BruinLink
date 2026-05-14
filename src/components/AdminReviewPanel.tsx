@@ -25,7 +25,11 @@ import {
   type AdminMutationResult,
   type AdminSessionState,
 } from "@/app/admin/actions";
-import { categoryLabels } from "@/lib/clubs";
+import { categoryLabels, type ClubStatus } from "@/lib/clubs";
+import {
+  clubStatusLabels,
+  formatLastUpdated,
+} from "@/lib/clubFreshness";
 import type {
   AdminReviewData,
   ClubRegistrationRequest,
@@ -44,6 +48,7 @@ type AdminReviewPanelProps = {
 };
 
 type ClubVisibilityFilter = "all" | "visible" | "hidden";
+type ClubFreshnessFilter = "all" | ClubStatus;
 
 const emptyData: AdminReviewData = {
   requests: [],
@@ -57,6 +62,16 @@ const clubVisibilityFilters: Array<{
   { value: "all", label: "All" },
   { value: "visible", label: "Visible" },
   { value: "hidden", label: "Hidden" },
+];
+
+const clubFreshnessFilters: Array<{
+  value: ClubFreshnessFilter;
+  label: string;
+}> = [
+  { value: "all", label: "All" },
+  { value: "fresh", label: "Fresh" },
+  { value: "steady", label: "Current" },
+  { value: "needs update", label: "Needs update" },
 ];
 
 export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
@@ -75,6 +90,8 @@ export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
   const [clubSearchQuery, setClubSearchQuery] = useState("");
   const [clubVisibilityFilter, setClubVisibilityFilter] =
     useState<ClubVisibilityFilter>("all");
+  const [clubFreshnessFilter, setClubFreshnessFilter] =
+    useState<ClubFreshnessFilter>("all");
   const [notice, setNotice] = useState<ReviewNotice | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -96,6 +113,15 @@ export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
     hidden: hiddenClubCount,
   };
 
+  const freshnessFilterCounts: Record<ClubFreshnessFilter, number> = {
+    all: data.clubs.length,
+    fresh: data.clubs.filter((club) => club.status === "fresh").length,
+    steady: data.clubs.filter((club) => club.status === "steady").length,
+    "needs update": data.clubs.filter(
+      (club) => club.status === "needs update",
+    ).length,
+  };
+
   const filteredManagedClubs = useMemo(() => {
     const normalizedQuery = clubSearchQuery.trim().toLowerCase();
 
@@ -103,6 +129,8 @@ export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
       const matchesVisibility =
         clubVisibilityFilter === "all" ||
         club.visibilityState === clubVisibilityFilter;
+      const matchesFreshness =
+        clubFreshnessFilter === "all" || club.status === clubFreshnessFilter;
 
       const searchableText = [
         club.name,
@@ -111,6 +139,8 @@ export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
         club.contactInfo,
         club.meetingTime,
         club.location,
+        clubStatusLabels[club.status],
+        club.status,
         club.visibilityState,
       ]
         .join(" ")
@@ -118,10 +148,11 @@ export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
 
       return (
         matchesVisibility &&
+        matchesFreshness &&
         (!normalizedQuery || searchableText.includes(normalizedQuery))
       );
     });
-  }, [clubSearchQuery, clubVisibilityFilter, data.clubs]);
+  }, [clubFreshnessFilter, clubSearchQuery, clubVisibilityFilter, data.clubs]);
 
   function submitPassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -471,6 +502,34 @@ export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
                   );
                 })}
               </div>
+
+              <div
+                className="grid grid-cols-2 gap-2"
+                aria-label="Filter existing clubs by freshness"
+              >
+                {clubFreshnessFilters.map((filter) => {
+                  const isSelected = clubFreshnessFilter === filter.value;
+
+                  return (
+                    <button
+                      key={filter.value}
+                      type="button"
+                      data-admin-club-freshness-filter={filter.value}
+                      onClick={() => setClubFreshnessFilter(filter.value)}
+                      className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2 ${
+                        isSelected
+                          ? "border-[var(--ucla-blue)] bg-[var(--ucla-blue)] text-[var(--ucla-yellow)]"
+                          : "border-[var(--line)] bg-[var(--background)] text-[var(--muted)] hover:border-[var(--ucla-blue)] hover:text-[var(--ucla-blue)]"
+                      }`}
+                    >
+                      <span>{filter.label}</span>
+                      <span aria-label={`${freshnessFilterCounts[filter.value]} clubs`}>
+                        {freshnessFilterCounts[filter.value]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="mt-4 grid max-h-[720px] gap-3 overflow-auto pr-1">
@@ -679,6 +738,14 @@ function ManagedClubCard({
       <p className="truncate text-xs leading-5 text-[var(--muted)]">
         {club.contactInfo}
       </p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-[var(--surface-strong)] px-2 py-1 text-xs font-bold text-[var(--foreground)]">
+          {clubStatusLabels[club.status]}
+        </span>
+        <span className="text-xs font-bold text-[var(--muted)]">
+          {formatLastUpdated(club.lastEditedAt)}
+        </span>
+      </div>
       <div className="mt-3 grid gap-2">
         <button
           type="button"

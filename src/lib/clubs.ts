@@ -1,4 +1,10 @@
 import { createSupabasePublicClient } from "@/lib/supabasePublic";
+import {
+  calculateClubStatus,
+  type ClubStatus,
+} from "@/lib/clubFreshness";
+
+export type { ClubStatus } from "@/lib/clubFreshness";
 
 export const categories = [
   "engineering",
@@ -9,7 +15,6 @@ export const categories = [
 ] as const;
 
 export type ClubCategory = (typeof categories)[number];
-export type ClubStatus = "fresh" | "needs update" | "steady";
 export type ClubVisibilityState = "visible" | "hidden";
 
 export type Club = {
@@ -94,7 +99,7 @@ export function rowToClub(row: ClubRow): Club {
     meetingTime: row.meeting_time,
     location: row.location,
     members: row.members,
-    status: row.status,
+    status: calculateClubStatus(row.last_edited_at),
     visibilityState: row.visibility_state,
     lastEditedAt: row.last_edited_at,
     createdAt: row.created_at,

@@ -261,6 +261,8 @@ Required content:
 
 - club name
 - category
+- freshness status
+- last updated timestamp/copy
 - short description
 - About
 - Upcoming Events
@@ -268,6 +270,14 @@ Required content:
 - Contact Information
 
 The page should render content from the database and update when backend content changes.
+
+Freshness status should be derived from the club's most recent edit time:
+
+- `fresh`: last edited within 3 days
+- `current`: last edited more than 3 days ago and no more than 14 days ago
+- `needs update`: last edited more than 14 days ago
+
+The public UI should show a `Last updated: ...` indicator so students can judge how current the listing is.
 
 ### 9.3 Dashboard Access With Per-Club Edit Code
 
@@ -683,6 +693,7 @@ An update log is optional but useful for debugging, demo review, and understandi
 - The current Supabase implementation stores the required page sections directly on the `clubs` row
 - The current Supabase implementation uses two primary tables: `clubs` and `club_registration_requests`
 - The current Supabase implementation constrains categories and request/visibility/status values at the database level
+- Club freshness should be calculated from `last_edited_at`; a stored `status` value may exist for compatibility, but displayed freshness should not depend on stale manual status values
 - The edit code should not be stored as plain visible text in production-like code; storing a hash is preferred if feasible
 - Club registration requests should be stored separately from public club records until approval
 - Approved requests should create a club record in the same shape used by seeded clubs

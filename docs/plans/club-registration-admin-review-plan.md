@@ -169,11 +169,27 @@ Final Supabase tables should support at least the following fields.
 - `contact_info`
 - `meeting_time`
 - `location`
+- `members`
+- `status`
 - `visibility_state`
 - `edit_code_hash`
 - `last_edited_at`
 - `created_at`
 - `updated_at`
+
+Allowed `status` values:
+
+- `fresh`
+- `steady`
+- `needs update`
+
+Freshness display rules:
+
+- `fresh`: `last_edited_at` is within the last 3 days.
+- `steady`: `last_edited_at` is older than 3 days and within the last 14 days. The UI labels this as `current`.
+- `needs update`: `last_edited_at` is older than 14 days.
+- Public, edit-mode, and admin views should show `Last updated: ...` next to status/freshness context.
+- The app derives displayed freshness from `last_edited_at` when reading clubs, so stored `status` values cannot become stale between writes.
 
 Allowed `visibility_state` values:
 
@@ -377,7 +393,7 @@ Recommended DB integration approach:
    - create `club_registration_requests`
    - add `visibility_state` to `clubs`
    - replace `edit_pin` with `edit_code_hash`
-   - keep `status` for freshness
+   - keep `status` for freshness compatibility, but derive displayed freshness from `last_edited_at`
    - keep `members` for current UI
 5. Wire data access through small server-side functions/actions rather than direct component queries.
 6. Use the anon key only for public-safe operations, such as visible club reads and pending registration inserts.
@@ -633,16 +649,33 @@ Implementation sequence:
 5. Add server actions for updating profile/content/details fields.
 6. Add edit-mode UI with section-level edit buttons and inline forms.
 7. Verify invalid edit code is rejected and does not create a session.
-8. Use admin `Regenerate code` to create a known code for a fake/seeded club.
+8. Use admin `Regenerate code` or a temporary known test hash for a fake/seeded club.
 9. Verify valid code redirects to `/clubs/[slug]/edit`.
 10. Verify saving each editable section persists to Supabase and updates the public page.
 11. Verify regenerated edit code invalidates the previous club edit session.
 
-Open implementation questions before greenlight:
+Resolved implementation questions:
 
-- Should the entry button say `Manage listing`, `Edit listing`, or `Club sign in`?
-- Should a club edit session last 4 hours like admin sessions, or should it be shorter?
-- Should editing happen only on `/clubs/[slug]/edit`, or should valid users return to the public page with inline edit controls there?
+- Entry button label: `Manage listing`.
+- Club edit session length: 4 hours, matching the current admin session duration.
+- Editing surface: dedicated `/clubs/[slug]/edit` page, with the public `/clubs/[slug]` page staying read-only.
+
+Implementation checkpoint:
+
+- Completed: added `src/lib/clubEditAuth.ts` for scoped, server-only club edit sessions.
+- Completed: club edit sessions are HTTP-only cookies scoped to `/clubs/[slug]`.
+- Completed: club session tokens are derived from the club slug and current `edit_code_hash`, so regenerating the edit code invalidates previous sessions.
+- Completed: added server actions for edit-code verification, exiting edit mode, and saving editable club fields.
+- Completed: public club pages now show a top-right `Manage listing` entry point and no longer show public pencil icons.
+- Completed: added `/clubs/[slug]/edit` guarded by the scoped club edit session.
+- Completed: edit mode supports profile, details, upcoming events, and announcements edits.
+- Verified: `npm run lint`, `npx tsc --noEmit`, and `npm run build` pass.
+- Verified in browser against localhost: direct `/clubs/[slug]/edit` access without a valid club session redirects back to the public club page.
+- Verified in browser against localhost: invalid edit codes are rejected inline on the public club page.
+- Verified in browser against localhost: valid `BL-XXXX-XXXX` codes open `/clubs/[slug]/edit`.
+- Verified in browser against localhost: profile copy, dashboard details, upcoming events, and announcements save to Supabase and are reflected on the public page.
+- Verified in browser against localhost: rotating the stored `edit_code_hash` invalidates the previous club edit session.
+- Cleanup completed: restored the fake `bruin-board-game-society` row to its original public content, details, status, `last_edited_at`, and original edit-code hash after verification.
 
 ## Security Notes
 

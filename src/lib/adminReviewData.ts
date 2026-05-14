@@ -88,7 +88,9 @@ export async function fetchAdminReviewData(): Promise<AdminReviewData> {
         contactInfo: club.contactInfo,
         meetingTime: club.meetingTime,
         location: club.location,
+        status: club.status,
         visibilityState: club.visibilityState,
+        lastEditedAt: club.lastEditedAt,
       };
     }),
   };

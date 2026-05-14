@@ -17,6 +17,10 @@ import {
   type Club,
   type ClubCategory,
 } from "@/lib/clubs";
+import {
+  clubStatusLabels,
+  formatLastUpdated,
+} from "@/lib/clubFreshness";
 
 type Filter = "all" | ClubCategory;
 
@@ -262,11 +266,16 @@ export function ClubDirectory({ clubs }: ClubDirectoryProps) {
                         <span className="min-w-0 truncate">{club.location}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2 pt-2">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone[club.status]}`}
-                        >
-                          {club.status}
-                        </span>
+                        <div className="min-w-0">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-bold ${statusTone[club.status]}`}
+                          >
+                            {clubStatusLabels[club.status]}
+                          </span>
+                          <p className="mt-2 truncate text-xs font-bold text-[var(--muted)]">
+                            {formatLastUpdated(club.lastEditedAt)}
+                          </p>
+                        </div>
                         <span className="flex items-center gap-1 text-sm font-bold text-[var(--foreground)]">
                           <Users
                             aria-hidden="true"

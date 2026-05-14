@@ -1,4 +1,4 @@
-import { categories, type ClubCategory } from "@/lib/clubs";
+import { categories, type ClubCategory, type ClubStatus } from "@/lib/clubs";
 
 export type ClubRegistrationStatus = "pending" | "approved" | "rejected";
 
@@ -34,7 +34,9 @@ export type ManagedClub = {
   contactInfo: string;
   meetingTime: string;
   location: string;
+  status: ClubStatus;
   visibilityState: ClubVisibilityState;
+  lastEditedAt: string;
 };
 
 export type AdminReviewData = {

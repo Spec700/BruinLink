@@ -11,7 +11,7 @@ import {
   Send,
   UserRound,
 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { use, useEffect, useMemo, useState, useTransition } from "react";
 import { submitClubRegistration } from "@/app/register/actions";
 import { categories, categoryLabels } from "@/lib/clubs";
 import {
@@ -38,6 +38,10 @@ export function ClubRegistrationForm() {
     useState<SubmittedRequest | null>(null);
   const [submitMessage, setSubmitMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+
+
+ 
+
 
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
@@ -265,7 +269,7 @@ export function ClubRegistrationForm() {
                   onChange={updateField}
                   icon={<CalendarDays aria-hidden="true" className="h-4 w-4" />}
                 />
-                <TextInput
+                <LocationAutocomplete
                   name="meetingLocation"
                   value={form.meetingLocation}
                   error={errors.meetingLocation}
@@ -367,6 +371,139 @@ export function ClubRegistrationForm() {
         </aside>
       </section>
     </main>
+  );
+}
+
+function LocationAutocomplete({
+  name,
+  value,
+  error,
+  onChange,
+  icon,
+}) {
+  const [query, setQuery] = useState(value || "");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setQuery(value || "");
+  }, [value]);
+
+  useEffect(() => {
+    if (query.length < 3) {
+      setResults([]);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        setLoading(true);
+
+        const res = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`
+        );
+
+        const data = await res.json();
+        setResults(data.features || []);
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+  const handleSelect = (feature) => {
+  const props = feature.properties;
+
+  const label = [props.name, props.city, props.state, props.country]
+    .filter(Boolean)
+    .join(", ");
+
+  setQuery(label);
+  setResults([]);
+
+  onChange(name, label);
+};
+
+  return (
+    <div>
+      <label className="text-sm font-bold text-[var(--foreground)]">
+        Please enter where your club meets:
+      </label>
+      <div style={{ position: "relative" }} className={`mt-2 flex h-12 items-center gap-3 rounded-lg border bg-[var(--background)] px-3 transition focus-within:border-[var(--ucla-blue)] ${
+          error ? "border-[var(--danger)]" : "border-[var(--line)]"
+        }`}>
+        {icon ? (
+          <span className="text-[var(--ucla-blue)]">{icon}</span>
+        ) : null}
+
+        <input
+          type="text"
+          name={name}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            onChange(e);
+          }}
+          className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
+        />
+      </div>
+
+      
+
+      {results.length > 0 && (
+        <div
+          style={{
+            background: "white",
+            border: "1px solid #ddd",
+            borderTop: "none",
+            fontFamily: "Freeman, sans-serif",
+            zIndex: 1000,
+            maxHeight: 250,
+            overflowY: "auto",
+            position: "absolute",
+          }}
+          className="flex-1"
+        >
+          {results.map((feature, index) => {
+            const props = feature.properties;
+
+            const label = [props.name, props.city, props.state, props.country]
+              .filter(Boolean)
+              .join(", ");
+
+            return (
+              <div
+                key={index}
+                onClick={() => handleSelect(feature)}
+                style={{
+                  padding: "12px",
+                  cursor: "pointer",
+                  borderBottom: "1px solid #eee",
+                  color: "#3A5186",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#3A5186";
+                  e.currentTarget.style.color = "white";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "white";
+                  e.currentTarget.style.color = "#3A5186";
+                }}
+              >
+                {label}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {loading && <div style={{ marginTop: 8 }}>Searching...</div>}
+      <FieldError message={error} />
+    </div>
   );
 }
 

@@ -101,7 +101,7 @@ export function ClubDirectory({ clubs }: ClubDirectoryProps) {
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Link
                     href="/register"
-                    className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2"
+                    className="inline-flex h-11 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-white transition hover:bg-[var(--ucla-blue-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] focus:ring-offset-2"
                   >
                     <Building2 aria-hidden="true" className="h-4 w-4" />
                     Register a club

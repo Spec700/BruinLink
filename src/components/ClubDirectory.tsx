@@ -30,7 +30,7 @@ const statusTone: Record<Club["status"], string> = {
   "needs update": "bg-[oklch(0.94_0.045_35)] text-[var(--danger)]",
 };
 
-function initials(name: string) {
+export default function initials(name: string) {
   return name
     .split(" ")
     .filter(Boolean)

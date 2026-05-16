@@ -13,6 +13,7 @@ export type ClubRegistrationInput = {
   about: string;
   meetingTime: string;
   meetingLocation: string;
+  profileImage: File | null
   publicContactEmail: string;
 };
 
@@ -26,9 +27,15 @@ export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category"> & 
   adminNote?: string;
 };
 
+export type ClubImage = {
+  url: string;
+  alt?: string;
+};
+
 export type ManagedClub = {
   id: string;
   slug: string;
+  profileImage?: ClubImage | null;
   name: string;
   category: ClubCategory;
   contactInfo: string;
@@ -55,6 +62,15 @@ export type ValidatedClubRegistrationInput = Omit<
   category: ClubCategory;
   slug: string;
 };
+export type FieldName = keyof ClubRegistrationInput;
+type LocationAutocompleteProps = {
+  name: FieldName;
+  value: string;
+  error?: string;
+  icon?: React.ReactNode;
+  onChange: (name: FieldName, value: string) => void;
+};
+
 
 export type RegistrationValidationResult =
   | {
@@ -76,6 +92,7 @@ export const initialRegistrationInput: ClubRegistrationInput = {
   requesterName: "",
   requesterEmail: "",
   clubName: "",
+  profileImage: null,
   category: "",
   shortDescription: "",
   about: "",
@@ -91,6 +108,7 @@ export const registrationFieldLabels: Record<
   requesterName: "Responsible contact name",
   requesterEmail: "Responsible contact email",
   clubName: "Club name",
+  profileImage: "Upload Porfile Image (optional)",
   category: "Category",
   shortDescription: "Short description",
   about: "About",

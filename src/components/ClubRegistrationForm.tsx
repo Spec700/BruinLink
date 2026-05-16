@@ -1,5 +1,7 @@
 "use client";
 
+import  initials  from "./ClubDirectory"
+
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -19,29 +21,28 @@ import {
   registrationFieldLabels,
   validateRegistrationInput,
   type ClubRegistrationInput,
+  type LocationAutocompleteProps,
   type RegistrationErrors,
 } from "@/lib/clubRegistration";
 
-type FieldName = keyof ClubRegistrationInput;
+
 
 type SubmittedRequest = {
   clubName: string;
   category: string;
+  profileImage: File;
 };
 
 export function ClubRegistrationForm() {
   const [form, setForm] = useState<ClubRegistrationInput>(
     initialRegistrationInput,
   );
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [submittedRequest, setSubmittedRequest] =
     useState<SubmittedRequest | null>(null);
   const [submitMessage, setSubmitMessage] = useState("");
   const [isPending, startTransition] = useTransition();
-
-
- 
-
 
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
@@ -88,6 +89,7 @@ export function ClubRegistrationForm() {
       setSubmittedRequest({
         clubName: submitResult.clubName,
         category: submitResult.category,
+        profileImage: submitResult.profileImage,
       });
       setErrors({});
       setSubmitMessage("");
@@ -206,37 +208,90 @@ export function ClubRegistrationForm() {
                 />
                 Public club profile
               </legend>
-              <div className="grid gap-4 md:grid-cols-2">
+
+              <div className="grid gap-6 md:grid-cols-2">
+            
+              <div className="flex flex-col gap-5">
                 <TextInput
                   name="clubName"
                   value={form.clubName}
                   error={errors.clubName}
                   onChange={updateField}
                 />
-                <div>
-                  <p className="text-sm font-bold text-[var(--foreground)]">
-                    {registrationFieldLabels.category}
-                  </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {categories.map((category) => (
-                      <button
-                        key={category}
-                        type="button"
-                        data-category={category}
-                        onClick={() => updateField("category", category)}
-                        className={`h-11 rounded-lg border px-3 text-left text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] ${
-                          form.category === category
-                            ? "border-[var(--ucla-blue)] bg-[var(--ucla-blue)] text-[var(--ucla-yellow)]"
-                            : "border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--ucla-blue)]"
-                        }`}
-                      >
-                        {categoryLabels[category]}
-                      </button>
-                    ))}
-                  </div>
-                  <FieldError message={errors.category} />
+
+              
+              <ImageUpload
+                error={errors.profileImage}
+                onChange={(file) => {
+                  setForm((current) => ({
+                    ...current,
+                    profileImage: file,
+                  }));
+
+                  if (!file) {
+                    setPreviewUrl(null);
+                    return;
+                  }
+
+                  setPreviewUrl(URL.createObjectURL(file));
+                }}
+              />
+
+
+   
+              <div className="flex items-center gap-3">
+                <div className="relative h-12 w-12 overflow-hidden rounded-lg">
+                  {!previewUrl ? (
+                    <div className="flex h-full w-full items-center justify-center bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
+                      {initials(form.clubName || "Club")}
+                    </div>
+                  ) : (
+                    <img
+                      src={previewUrl}
+                      alt="Club profile preview"
+                      className="h-full w-full object-cover"
+                    />
+                  )}
                 </div>
+
+              <div>
+                <p className="text-sm font-bold text-[var(--foreground)]">
+                  Profile preview
+                </p>
+                <p className="text-xs text-[var(--muted)]">
+                  This is how your club icon will appear.
+                </p>
               </div>
+            </div>
+          </div>
+
+
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-bold text-[var(--foreground)]">
+              {registrationFieldLabels.category}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  data-category={category}
+                  onClick={() => updateField("category", category)}
+                  className={`h-11 rounded-lg border px-3 text-left text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)] ${
+                    form.category === category
+                      ? "border-[var(--ucla-blue)] bg-[var(--ucla-blue)] text-[var(--ucla-yellow)]"
+                      : "border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--ucla-blue)]"
+                  }`}
+                >
+                  {categoryLabels[category]}
+                </button>
+              ))}
+            </div>
+
+            <FieldError message={errors.category} />
+          </div>
+        </div>
 
               <TextInput
                 name="shortDescription"
@@ -374,13 +429,42 @@ export function ClubRegistrationForm() {
   );
 }
 
+function ImageUpload({
+    error,
+    onChange,
+    }: {
+      error?: string;
+      onChange: (file: File | null) => void;
+    }) {
+  return (
+    <div>
+      <label 
+        className="text-sm font-bold text-[var(--foreground)]"
+      >
+        Club profile picture (optional)
+      </label>
+
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        onChange={(event) => {
+          const file = event.target.files?.[0] ?? null;
+          onChange(file);
+        }}
+        className="mt-2 block w-full text-sm"
+      />
+        <FieldError message={error} />
+    </div>
+    );
+  }
+
 function LocationAutocomplete({
   name,
   value,
   error,
   onChange,
   icon,
-}) {
+  }: LocationAutocompleteProps) {
   const [query, setQuery] = useState(value || "");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -430,9 +514,6 @@ function LocationAutocomplete({
 
   return (
     <div>
-      <label className="text-sm font-bold text-[var(--foreground)]">
-        Please enter where your club meets:
-      </label>
       <div style={{ position: "relative" }} className={`mt-2 flex h-12 items-center gap-3 rounded-lg border bg-[var(--background)] px-3 transition focus-within:border-[var(--ucla-blue)] ${
           error ? "border-[var(--danger)]" : "border-[var(--line)]"
         }`}>
@@ -445,9 +526,9 @@ function LocationAutocomplete({
           name={name}
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value);
-            onChange(e);
-          }}
+          setQuery(e.target.value);
+          onChange(name, e.target.value);
+        }}
           className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
         />
       </div>

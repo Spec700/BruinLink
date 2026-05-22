@@ -1,5 +1,5 @@
 import { categories, type ClubCategory, type ClubStatus } from "@/lib/clubs";
-import { location } from "@/components/ClubRegistrationForm";
+import { selectedLocation } from "@/lib/locationStore";
 
 export type ClubRegistrationStatus = "pending" | "approved" | "rejected";
 
@@ -16,6 +16,7 @@ export type ClubRegistrationInput = {
   meetingLocation: string;
   profileImage: File | null
   publicContactEmail: string;
+  memberCount: string
 };
 
 export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category"> & {
@@ -95,6 +96,7 @@ export const initialRegistrationInput: ClubRegistrationInput = {
   meetingTime: "",
   meetingLocation: "",
   publicContactEmail: "",
+  memberCount: "",
 };
 
 
@@ -112,19 +114,27 @@ export const registrationFieldLabels: Record<
   meetingTime: "Meeting time",
   meetingLocation: "Meeting location",
   publicContactEmail: "Public contact email",
+  memberCount: "Number of members"
 };
 
 export function isClubCategory(value: string): value is ClubCategory {
   return categories.some((category) => category === value);
 }
 
-export function isValidLocation(location: object){
-    if(!location || typeof location != "object"){
+export function isValidMemberCount(count: string){
+  if (Number(count) > 0){
+      return true;
+  }
+}
+
+export function isValidLocation(selectedLocation: object){
+    console.log(selectedLocation);
+    if(!selectedLocation || typeof selectedLocation != "object"){
       return false;
     }
     const requiredFields = ["name", "city", "state", "country"];
     for(const field of requiredFields){
-      if (!(field in location)){
+      if (!(field in selectedLocation)){
         return false;
       }
     }
@@ -161,6 +171,7 @@ export function normalizeRegistrationInput(
     meetingLocation: input.meetingLocation.trim(),
     publicContactEmail: input.publicContactEmail.trim(),
     profileImage: input.profileImage,
+    memberCount: input.memberCount.trim()
   };
 }
 
@@ -179,13 +190,18 @@ export function validateRegistrationInput(
     "meetingTime",
     "meetingLocation",
     "publicContactEmail",
+    "memberCount"
   ] satisfies Array<keyof ClubRegistrationInput>) {
     if (!data[field]) {
       errors[field] = `${registrationFieldLabels[field]} is required.`;
     }
   }
-  if(!isValidLocation(location)){
+  if(!isValidLocation(selectedLocation)){
     errors.meetingLocation = "Valid location is required.";
+  }
+
+  if(!isValidMemberCount(data.memberCount)){
+    errors.memberCount = "Invalid member count";
   }
   
 

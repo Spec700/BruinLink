@@ -21,16 +21,14 @@ import {
   registrationFieldLabels,
   validateRegistrationInput,
   type ClubRegistrationInput,
-  type LocationAutocompleteProps,
   type RegistrationErrors,
 } from "@/lib/clubRegistration";
 
-
+type FieldName = keyof ClubRegistrationInput;
 
 type SubmittedRequest = {
   clubName: string;
   category: string;
-  profileImage: File;
 };
 
 export function ClubRegistrationForm() {
@@ -89,7 +87,6 @@ export function ClubRegistrationForm() {
       setSubmittedRequest({
         clubName: submitResult.clubName,
         category: submitResult.category,
-        profileImage: submitResult.profileImage,
       });
       setErrors({});
       setSubmitMessage("");
@@ -221,6 +218,8 @@ export function ClubRegistrationForm() {
 
               
               <ImageUpload
+                name="profileImage"
+                value = {form.profileImage}
                 error={errors.profileImage}
                 onChange={(file) => {
                   setForm((current) => ({
@@ -430,21 +429,27 @@ export function ClubRegistrationForm() {
 }
 
 function ImageUpload({
-    error,
-    onChange,
-    }: {
-      error?: string;
-      onChange: (file: File | null) => void;
-    }) {
+  name,
+  value,
+  error,
+  onChange,
+}: {
+  name: FieldName;
+  value: File | null;
+  error?: string;
+  onChange: (file: File | null) => void;
+}) {
   return (
     <div>
-      <label 
+      <label
+        htmlFor={name}
         className="text-sm font-bold text-[var(--foreground)]"
       >
-        Club profile picture (optional)
+        {registrationFieldLabels.profileImage}
       </label>
 
       <input
+        id={name}
         type="file"
         accept="image/png,image/jpeg,image/webp"
         onChange={(event) => {
@@ -453,10 +458,13 @@ function ImageUpload({
         }}
         className="mt-2 block w-full text-sm"
       />
-        <FieldError message={error} />
+
+      <FieldError message={error} />
     </div>
-    );
-  }
+  );
+}
+
+export let location = {}
 
 function LocationAutocomplete({
   name,
@@ -464,7 +472,13 @@ function LocationAutocomplete({
   error,
   onChange,
   icon,
-  }: LocationAutocompleteProps) {
+  }: {
+    name: FieldName;
+    value: string;
+    error?: string;
+    icon?: React.ReactNode;
+    onChange: (name: FieldName, value: string) => void;
+  }) {
   const [query, setQuery] = useState(value || "");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -489,6 +503,7 @@ function LocationAutocomplete({
 
         const data = await res.json();
         setResults(data.features || []);
+       
       } catch (err) {
         console.error("Search failed:", err);
       } finally {
@@ -499,8 +514,12 @@ function LocationAutocomplete({
     return () => clearTimeout(timeout);
   }, [query]);
 
-  const handleSelect = (feature) => {
+  const handleSelect = (feature: object) => {
   const props = feature.properties;
+  location =   {name: props.name,
+    city: props.city,
+    state: props.state,
+    country: props.country}
 
   const label = [props.name, props.city, props.state, props.country]
     .filter(Boolean)
@@ -510,10 +529,15 @@ function LocationAutocomplete({
   setResults([]);
 
   onChange(name, label);
-};
+  };
 
   return (
     <div>
+      <label 
+        htmlFor={name}
+        className="text-sm font-bold text-[var(--foreground)]">
+        {registrationFieldLabels.meetingLocation}
+      </label>
       <div style={{ position: "relative" }} className={`mt-2 flex h-12 items-center gap-3 rounded-lg border bg-[var(--background)] px-3 transition focus-within:border-[var(--ucla-blue)] ${
           error ? "border-[var(--danger)]" : "border-[var(--line)]"
         }`}>

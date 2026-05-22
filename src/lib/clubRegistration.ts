@@ -1,4 +1,5 @@
 import { categories, type ClubCategory, type ClubStatus } from "@/lib/clubs";
+import { location } from "@/components/ClubRegistrationForm";
 
 export type ClubRegistrationStatus = "pending" | "approved" | "rejected";
 
@@ -63,13 +64,8 @@ export type ValidatedClubRegistrationInput = Omit<
   slug: string;
 };
 export type FieldName = keyof ClubRegistrationInput;
-type LocationAutocompleteProps = {
-  name: FieldName;
-  value: string;
-  error?: string;
-  icon?: React.ReactNode;
-  onChange: (name: FieldName, value: string) => void;
-};
+
+
 
 
 export type RegistrationValidationResult =
@@ -101,6 +97,7 @@ export const initialRegistrationInput: ClubRegistrationInput = {
   publicContactEmail: "",
 };
 
+
 export const registrationFieldLabels: Record<
   keyof ClubRegistrationInput,
   string
@@ -108,7 +105,7 @@ export const registrationFieldLabels: Record<
   requesterName: "Responsible contact name",
   requesterEmail: "Responsible contact email",
   clubName: "Club name",
-  profileImage: "Upload Porfile Image (optional)",
+  profileImage: "Club Porfile Image (optional)",
   category: "Category",
   shortDescription: "Short description",
   about: "About",
@@ -120,6 +117,22 @@ export const registrationFieldLabels: Record<
 export function isClubCategory(value: string): value is ClubCategory {
   return categories.some((category) => category === value);
 }
+
+export function isValidLocation(location: object){
+    if(!location || typeof location != "object"){
+      return false;
+    }
+    const requiredFields = ["name", "city", "state", "country"];
+    for(const field of requiredFields){
+      if (!(field in location)){
+        return false;
+      }
+    }
+    return true;
+
+}
+
+
 
 export function slugifyClubName(name: string) {
   return name
@@ -147,6 +160,7 @@ export function normalizeRegistrationInput(
     meetingTime: input.meetingTime.trim(),
     meetingLocation: input.meetingLocation.trim(),
     publicContactEmail: input.publicContactEmail.trim(),
+    profileImage: input.profileImage,
   };
 }
 
@@ -170,6 +184,10 @@ export function validateRegistrationInput(
       errors[field] = `${registrationFieldLabels[field]} is required.`;
     }
   }
+  if(!isValidLocation(location)){
+    errors.meetingLocation = "Valid location is required.";
+  }
+  
 
   if (!data.category || !isClubCategory(data.category)) {
     errors.category = "Choose one of the approved BruinLink categories.";
@@ -188,6 +206,8 @@ export function validateRegistrationInput(
   if (data.clubName && !slug) {
     errors.clubName = "Club name must include letters or numbers.";
   }
+
+
 
   if (Object.keys(errors).length > 0 || !isClubCategory(data.category)) {
     return {

@@ -341,7 +341,7 @@ export function ClubRegistrationForm() {
                 name="memberCount"
                 value={form.memberCount}
                 error={errors.memberCount}
-                onChange={updateField}
+                onChange={(name, value) => updateField(name, value.replace(/[^0-9]/g, ''))}
           />
           </div>
         </div>
@@ -370,7 +370,7 @@ export function ClubRegistrationForm() {
                 Meeting details
               </legend>
               <div className="grid gap-4 md:grid-cols-2">
-                <TextInput
+                <MeetingTimeInput
                   name="meetingTime"
                   value={form.meetingTime}
                   error={errors.meetingTime}
@@ -856,6 +856,77 @@ function ClubCardPreview({ club }: {club: ClubPreview | null}) {
           ? [club.location.name, club.location.city, club.location.state].filter(Boolean).join(", ")
           : "No location"}
       </div>
+    </div>
+  );
+}
+
+function MeetingTimeInput({
+  name,
+  value,
+  error,
+  onChange,
+  icon,
+}: {
+  name: FieldName;
+  value: string;
+  error?: string;
+  onChange: (name: FieldName, value: string) => void;
+  icon?: React.ReactNode;
+}) {
+  const parseValue = (val: string) => {
+    if (!val) return { day: "", time: "" };
+    const parts = val.split(" at ");
+    if (parts.length === 2) return { day: parts[0], time: parts[1] };
+    return { day: val, time: "" }; // fallback
+  };
+
+  const { day: initialDay, time: initialTime } = parseValue(value);
+  const [day, setDay] = useState(initialDay);
+  const [time, setTime] = useState(initialTime);
+
+  const handleDayChange = (newDay: string) => {
+    setDay(newDay);
+    onChange(name, newDay && time ? `${newDay} at ${time}` : newDay);
+  };
+
+  const handleTimeChange = (newTime: string) => {
+    setTime(newTime);
+    onChange(name, day && newTime ? `${day} at ${newTime}` : newTime);
+  };
+
+  return (
+    <div>
+      <label className="text-sm font-bold text-[var(--foreground)]">
+        {registrationFieldLabels[name] || "Meeting time"}
+      </label>
+      <div className="mt-2 flex h-12 gap-2">
+        <div className={`flex flex-1 items-center gap-2 rounded-lg border bg-[var(--background)] px-3 focus-within:border-[var(--ucla-blue)] ${error ? "border-[var(--danger)]" : "border-[var(--line)]"}`}>
+          {icon && <span className="text-[var(--ucla-blue)]">{icon}</span>}
+          <select
+            value={day}
+            onChange={(e) => handleDayChange(e.target.value)}
+            className="h-full w-full bg-transparent text-sm text-[var(--foreground)] outline-none"
+          >
+            <option value="" disabled>Day</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+          </select>
+        </div>
+        <div className={`flex flex-1 items-center rounded-lg border bg-[var(--background)] px-3 focus-within:border-[var(--ucla-blue)] ${error ? "border-[var(--danger)]" : "border-[var(--line)]"}`}>
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => handleTimeChange(e.target.value)}
+            className="h-full w-full bg-transparent text-sm text-[var(--foreground)] outline-none"
+          />
+        </div>
+      </div>
+      <FieldError message={error} />
     </div>
   );
 }

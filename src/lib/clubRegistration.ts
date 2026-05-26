@@ -1,5 +1,5 @@
 import { categories, type ClubCategory, type ClubStatus } from "@/lib/clubs";
-import { selectedLocation } from "@/lib/locationStore";
+
 
 export type ClubRegistrationStatus = "pending" | "approved" | "rejected";
 
@@ -13,10 +13,17 @@ export type ClubRegistrationInput = {
   shortDescription: string;
   about: string;
   meetingTime: string;
-  meetingLocation: string;
+  meetingLocation: LocationData | null;
   profileImage: File | null
   publicContactEmail: string;
   memberCount: string
+};
+
+export type LocationData = {
+  name: string;
+  city?: string;
+  state?: string;
+  country?: string;
 };
 
 export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category"> & {
@@ -94,7 +101,7 @@ export const initialRegistrationInput: ClubRegistrationInput = {
   shortDescription: "",
   about: "",
   meetingTime: "",
-  meetingLocation: "",
+  meetingLocation: {name: ""},
   publicContactEmail: "",
   memberCount: "",
 };
@@ -122,19 +129,18 @@ export function isClubCategory(value: string): value is ClubCategory {
 }
 
 export function isValidMemberCount(count: string){
-  if (Number(count) > 0){
-      return true;
-  }
+    return Number(count) > 0;
 }
 
-export function isValidLocation(selectedLocation: object){
-    console.log(selectedLocation);
-    if(!selectedLocation || typeof selectedLocation != "object"){
+export function isValidLocation(location: any ){
+    if(!location){
+      console.log(`no location found`);
       return false;
     }
     const requiredFields = ["name", "city", "state", "country"];
     for(const field of requiredFields){
-      if (!(field in selectedLocation)){
+      if (!(field in location)){
+        console.log(`${field} not found in ${location}`)
         return false;
       }
     }
@@ -168,7 +174,14 @@ export function normalizeRegistrationInput(
     shortDescription: input.shortDescription.trim(),
     about: input.about.trim(),
     meetingTime: input.meetingTime.trim(),
-    meetingLocation: input.meetingLocation.trim(),
+    meetingLocation: input.meetingLocation ? {
+      ...input.meetingLocation,
+      name: input.meetingLocation.name.trim(),
+      city: input.meetingLocation.city?.trim(),
+      state: input.meetingLocation.state?.trim(),
+      country: input.meetingLocation.country?.trim(),
+    }
+  : null,
     publicContactEmail: input.publicContactEmail.trim(),
     profileImage: input.profileImage,
     memberCount: input.memberCount.trim()
@@ -196,8 +209,8 @@ export function validateRegistrationInput(
       errors[field] = `${registrationFieldLabels[field]} is required.`;
     }
   }
-  if(!isValidLocation(selectedLocation)){
-    errors.meetingLocation = "Valid location is required.";
+  if(!isValidLocation(data.meetingLocation)){
+    errors.meetingLocation = "problem is required.";
   }
 
   if(!isValidMemberCount(data.memberCount)){

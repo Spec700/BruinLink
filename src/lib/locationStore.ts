@@ -5,7 +5,11 @@ export type ClubLocation = {
   country?: string;
 };
 
-export let selectedLocation: ClubLocation = {};
+let selectedLocation: ClubLocation = {};
+
+export function getSelectedLocation() {
+  return selectedLocation;
+}
 
 export function setSelectedLocation(location: ClubLocation) {
   selectedLocation = location;

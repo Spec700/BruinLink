@@ -53,7 +53,7 @@ type ProfileForm = {
 
 type DetailsForm = {
   meetingTime: string;
-  location: string;
+  location: Object | null;
   members: string;
   contactInfo: string;
 };
@@ -211,7 +211,7 @@ export function ClubEditDashboard({
                       }))
                     }
                   />
-                  <TextInput
+                  <LocationInput
                     label="Meeting location"
                     value={detailsForm.location}
                     error={fieldErrors.location}
@@ -510,6 +510,42 @@ function EditableCard({
       {children}
     </article>
   );
+}
+function LocationInput({
+  label, 
+  value, 
+  error, 
+  inputMode,
+  onChange}:
+{
+  label: string;
+  value: Object | null,
+  error?: string;
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+  onChange: (value: Object | null) => void;
+}){
+  const id = label.toLowerCase().replace(/\s+/g, "-");
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="text-sm font-bold text-[var(--foreground)]"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        value={value}
+        inputMode={inputMode}
+        onChange={(event) => onChange(event.target.value)}
+        className={`mt-2 h-11 w-full rounded-lg border bg-[var(--background)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--ucla-blue)] ${
+          error ? "border-[var(--danger)]" : "border-[var(--line)]"
+        }`}
+      />
+      <FieldError message={error} />
+    </div>
+  );
+
 }
 
 function TextInput({

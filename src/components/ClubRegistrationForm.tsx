@@ -4,6 +4,7 @@ import  initials  from "./ClubDirectory"
 
 import Link from "next/link";
 import {
+  ArrowUpRight,
   ArrowLeft,
   Building2,
   CalendarDays,
@@ -15,16 +16,38 @@ import {
 } from "lucide-react";
 import { use, useEffect, useMemo, useState, useTransition } from "react";
 import { submitClubRegistration } from "@/app/register/actions";
-import { categories, categoryLabels } from "@/lib/clubs";
+import { categories, categoryLabels, type ClubCategory } from "@/lib/clubs";
+
 import {
   initialRegistrationInput,
   registrationFieldLabels,
   validateRegistrationInput,
   type ClubRegistrationInput,
   type RegistrationErrors,
+  type LocationData
 } from "@/lib/clubRegistration";
 
 type FieldName = keyof ClubRegistrationInput;
+
+type ClubPreview = {
+  name: string;
+  category: ClubCategory | "";
+  shortDescription: string;
+  meetingTime: string;
+  location: LocationData | null;
+  members: number;
+  status: string;
+  lastEditedAt: string;
+  profileImage: File | null;
+};
+
+type ModalProps = { 
+  previewClub: ClubPreview | null;
+  isPending: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+};
+
 
 type SubmittedRequest = {
   clubName: string;
@@ -41,10 +64,12 @@ export function ClubRegistrationForm() {
     useState<SubmittedRequest | null>(null);
   const [submitMessage, setSubmitMessage] = useState("");
   const [isPending, startTransition] = useTransition();
-
+  const [previewClub, setPreviewClub] = useState<ClubPreview | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
-  function updateField(field: FieldName, value: string) {
+
+  function updateField(field: FieldName, value: any) {
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -62,6 +87,14 @@ export function ClubRegistrationForm() {
     });
   }
 
+  function resetForm(){
+    setForm(initialRegistrationInput);
+    setPreviewUrl(null);
+    setErrors({});
+    setSubmitMessage("");
+    setPreviewClub(null);
+  }
+
   function processRegistration() {
     const result = validateRegistrationInput(form);
 
@@ -71,36 +104,51 @@ export function ClubRegistrationForm() {
       setSubmitMessage("Check the highlighted fields and submit again.");
       return;
     }
-
+    setErrors({});
     setSubmitMessage("");
-
-    startTransition(async () => {
-      const submitResult = await submitClubRegistration(form);
-
-      if (!submitResult.ok) {
-        setSubmittedRequest(null);
-        setErrors(submitResult.errors ?? {});
-        setSubmitMessage(submitResult.message);
-        return;
-      }
-
-      setSubmittedRequest({
-        clubName: submitResult.clubName,
-        category: submitResult.category,
-      });
-      setErrors({});
-      setSubmitMessage("");
-      setForm(initialRegistrationInput);
+    setPreviewClub({
+      name: form.clubName,
+      category: form.category,
+      shortDescription: form.shortDescription,
+      meetingTime: form.meetingTime,
+      location: form.meetingLocation,
+      members: Number(form.memberCount || 0),
+      status: "preview",
+      lastEditedAt: new Date().toISOString(),
+      profileImage: form.profileImage,
     });
+
+    setShowPreview(true)
   }
 
-  function submitRegistration(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    processRegistration();
+  function handleConfirmSubmit(){
+    startTransition(async () => {
+      const submitResult = await submitClubRegistration(form);
+      if (!submitResult.ok) {
+        setErrors(submitResult.errors ?? {});
+        setSubmitMessage(submitResult.message);
+        setShowPreview(false); // drop back to form with errors visible
+        return;
+      }
+      setSubmittedRequest({
+        clubName: form.clubName,
+        category: form.category,
+      });
+      setShowPreview(false);
+      resetForm();
+    });
   }
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
+      {showPreview && (
+        <Modal
+          previewClub={previewClub}
+          isPending={isPending}
+          onClose={() => setShowPreview(false)}
+          onConfirm={handleConfirmSubmit}
+        />
+      )}
       <section className="border-b border-[var(--line)] bg-[var(--surface)]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-7 sm:px-6 lg:px-8">
           <Link
@@ -157,7 +205,7 @@ export function ClubRegistrationForm() {
 
       <section className="mx-auto grid w-full max-w-7xl gap-4 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <form
-          onSubmit={submitRegistration}
+          onSubmit={handleConfirmSubmit}
           className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-5"
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -289,6 +337,12 @@ export function ClubRegistrationForm() {
             </div>
 
             <FieldError message={errors.category} />
+             <TextInput
+                name="memberCount"
+                value={form.memberCount}
+                error={errors.memberCount}
+                onChange={updateField}
+          />
           </div>
         </div>
 
@@ -342,7 +396,8 @@ export function ClubRegistrationForm() {
             </fieldset>
 
             <div className="grid gap-4 border-t border-[var(--line)] pt-5">
-              {submittedRequest ? (
+              {submittedRequest ? 
+              (
                 <div className="rounded-lg border border-[oklch(0.78_0.09_155)] bg-[oklch(0.96_0.035_155)] p-4 text-[oklch(0.31_0.1_155)]">
                   <p className="flex items-center gap-2 font-bold">
                     <CheckCircle2 aria-hidden="true" className="h-5 w-5" />
@@ -464,7 +519,7 @@ function ImageUpload({
   );
 }
 
-export let location = {}
+
 
 function LocationAutocomplete({
   name,
@@ -474,18 +529,26 @@ function LocationAutocomplete({
   icon,
   }: {
     name: FieldName;
-    value: string;
+    value: LocationData | null;
     error?: string;
     icon?: React.ReactNode;
-    onChange: (name: FieldName, value: string) => void;
+    onChange: (
+      name: FieldName,
+      value: LocationData | null
+    ) => void;
   }) {
-  const [query, setQuery] = useState(value || "");
+  /* The query is what */
+  const [query, setQuery] = useState(
+      value
+        ? [value.name, value.city, value.state, value.country]
+            .filter(Boolean)
+            .join(", ")
+        : ""
+    );
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    setQuery(value || "");
-  }, [value]);
+  
 
   useEffect(() => {
     if (query.length < 3) {
@@ -514,22 +577,30 @@ function LocationAutocomplete({
     return () => clearTimeout(timeout);
   }, [query]);
 
-  const handleSelect = (feature: object) => {
+  const handleSelect = (feature: any) => {
   const props = feature.properties;
-  location =   {name: props.name,
+
+  const location: LocationData = {
+    name: props.name,
     city: props.city,
     state: props.state,
-    country: props.country}
+    country: props.country,
+  };
 
-  const label = [props.name, props.city, props.state, props.country]
+  const label = [
+    location.name,
+    location.city,
+    location.state,
+    location.country,
+  ]
     .filter(Boolean)
     .join(", ");
 
   setQuery(label);
   setResults([]);
 
-  onChange(name, label);
-  };
+  onChange(name, location);
+};
 
   return (
     <div>
@@ -551,7 +622,7 @@ function LocationAutocomplete({
           value={query}
           onChange={(e) => {
           setQuery(e.target.value);
-          onChange(name, e.target.value);
+          onChange(name, null);
         }}
           className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
         />
@@ -695,4 +766,96 @@ function FieldError({ message }: { message?: string }) {
   }
 
   return <p className="mt-2 text-sm font-bold text-[var(--danger)]">{message}</p>;
+}
+
+function Modal({
+  previewClub,
+  isPending,
+  onClose,
+  onConfirm,
+}: ModalProps) {
+  if (!previewClub) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-xl rounded-lg bg-[var(--surface)] p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-lg font-extrabold text-[var(--foreground)]">
+            Preview your listing
+          </h2>
+          <button onClick={onClose} className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]">
+            ✕
+          </button>
+        </div>
+
+        <ClubCardPreview club={previewClub} />
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-bold text-[var(--foreground)] hover:border-[var(--ucla-blue)]"
+          >
+            Continue editing
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isPending}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] hover:bg-[var(--ucla-blue-strong)] disabled:opacity-60"
+          >
+            <Send className="h-4 w-4" aria-hidden />
+            {isPending ? "Submitting…" : "Confirm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+  
+
+function ClubCardPreview({ club }: {club: ClubPreview | null}) {
+  if(!club){
+    return(
+      <div>Unable to produce card</div>
+    );
+  }const [objectUrl, setObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!club?.profileImage) { setObjectUrl(null); return; }
+    const url = URL.createObjectURL(club.profileImage);
+    setObjectUrl(url);
+    return () => URL.revokeObjectURL(url); // cleaned up on unmount
+  }, [club?.profileImage]);
+
+  if (!club) return <div>Unable to produce card</div>;
+
+  return (
+    <div className="flex min-h-[292px] flex-col justify-between rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
+      <div className="flex items-start gap-3">
+        {objectUrl ? (
+          <img src={objectUrl} className="h-12 w-12 rounded-lg object-cover" alt="" />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-extrabold text-[var(--ucla-blue-strong)]">
+            {initials(club.name)}
+          </div>
+        )}
+        <div>
+          <p className="font-display text-xl font-extrabold">{club.name}</p>
+          <p className="text-sm font-bold text-[var(--ucla-blue)]">
+            {categoryLabels[club.category as ClubCategory] ?? club.category}
+          </p>
+        </div>
+        <ArrowUpRight
+            aria-hidden="true"
+            className="h-5 w-5 shrink-0 text-[var(--muted)] transition group-hover:text-[var(--ucla-blue)]"
+        />
+      </div>
+      <p className="mt-4 text-[var(--muted)]">{club.shortDescription}</p>
+      <div className="mt-5 text-sm text-[var(--muted)]">
+        {club.meetingTime} •{" "}
+        {club.location
+          ? [club.location.name, club.location.city, club.location.state].filter(Boolean).join(", ")
+          : "No location"}
+      </div>
+    </div>
+  );
 }

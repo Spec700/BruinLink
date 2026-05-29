@@ -11,6 +11,12 @@ export const categories = [
   "computer science",
   "business",
   "cultural",
+  "volunteering",
+  "games",
+  "art",
+  "music",
+  "media",
+  "food",
   "other",
 ] as const;
 
@@ -82,6 +88,12 @@ export const categoryLabels: Record<ClubCategory, string> = {
   "computer science": "Computer Science",
   business: "Business",
   cultural: "Cultural",
+  volunteering: "Volunteering",
+  games: "Games",
+  art: "Art",
+  music: "Music",
+  media: "Media",
+  food: "Food",
   other: "Other",
 };
 

@@ -5,7 +5,7 @@ create table if not exists clubs (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   name text not null,
-  category text not null check (category in ('engineering', 'computer science', 'business', 'cultural', 'other')),
+  category text not null check (category in ('engineering', 'computer science', 'business', 'cultural', 'volunteering', 'games', 'art', 'music', 'media', 'food', 'other')),
   short_description text not null default '',
   about text not null default '',
   upcoming_events text not null default '',

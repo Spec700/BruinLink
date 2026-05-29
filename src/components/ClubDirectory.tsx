@@ -250,18 +250,18 @@ export function ClubDirectory({ clubs }: ClubDirectoryProps) {
                       </p>
                     </div>
 
-                    <div className="mt-5 grid gap-3">
-                      <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                    <div className="mt-5 grid grid-cols-1 gap-3">
+                      <div className="flex min-w-0 items-center gap-2 text-sm text-[var(--muted)]">
                         <CalendarDays
                           aria-hidden="true"
-                          className="h-4 w-4 text-[var(--ucla-blue)]"
+                          className="h-4 w-4 shrink-0 text-[var(--ucla-blue)]"
                         />
                         <span className="min-w-0 truncate">{club.meetingTime}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                      <div className="flex min-w-0 items-center gap-2 text-sm text-[var(--muted)]">
                         <MapPin
                           aria-hidden="true"
-                          className="h-4 w-4 text-[var(--ucla-blue)]"
+                          className="h-4 w-4 shrink-0 text-[var(--ucla-blue)]"
                         />
                         <span className="min-w-0 truncate">{club.location}</span>
                       </div>

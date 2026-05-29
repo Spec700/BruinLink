@@ -1,4 +1,10 @@
-import { supabase, supabaseConfigured } from "./supabase";
+import { createSupabasePublicClient } from "@/lib/supabasePublic";
+import {
+  calculateClubStatus,
+  type ClubStatus,
+} from "@/lib/clubFreshness";
+
+export type { ClubStatus } from "@/lib/clubFreshness";
 
 export const categories = [
   "engineering",
@@ -9,8 +15,10 @@ export const categories = [
 ] as const;
 
 export type ClubCategory = (typeof categories)[number];
+export type ClubVisibilityState = "visible" | "hidden";
 
 export type Club = {
+  id: string;
   slug: string;
   name: string;
   category: ClubCategory;
@@ -22,8 +30,52 @@ export type Club = {
   meetingTime: string;
   location: string;
   members: number;
-  status: "fresh" | "needs update" | "steady";
+  status: ClubStatus;
+  visibilityState: ClubVisibilityState;
+  lastEditedAt: string;
+  createdAt: string;
+  updatedAt: string;
 };
+
+export type ClubRow = {
+  id: string;
+  slug: string;
+  name: string;
+  category: ClubCategory;
+  short_description: string;
+  about: string;
+  upcoming_events: string;
+  announcements: string;
+  contact_info: string;
+  meeting_time: string;
+  location: string;
+  members: number;
+  status: ClubStatus;
+  visibility_state: ClubVisibilityState;
+  last_edited_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export const clubSelectColumns = [
+  "id",
+  "slug",
+  "name",
+  "category",
+  "short_description",
+  "about",
+  "upcoming_events",
+  "announcements",
+  "contact_info",
+  "meeting_time",
+  "location",
+  "members",
+  "status",
+  "visibility_state",
+  "last_edited_at",
+  "created_at",
+  "updated_at",
+].join(", ");
 
 export const categoryLabels: Record<ClubCategory, string> = {
   engineering: "Engineering",
@@ -33,26 +85,12 @@ export const categoryLabels: Record<ClubCategory, string> = {
   other: "Other",
 };
 
-type ClubRow = {
-  slug: string;
-  name: string;
-  category: string;
-  short_description: string;
-  about: string;
-  upcoming_events: string;
-  announcements: string;
-  contact_info: string;
-  meeting_time: string;
-  location: string;
-  members: number;
-  status: string;
-};
-
-function rowToClub(row: ClubRow): Club {
+export function rowToClub(row: ClubRow): Club {
   return {
+    id: row.id,
     slug: row.slug,
     name: row.name,
-    category: row.category as ClubCategory,
+    category: row.category,
     shortDescription: row.short_description,
     about: row.about,
     upcomingEvents: row.upcoming_events,
@@ -61,123 +99,43 @@ function rowToClub(row: ClubRow): Club {
     meetingTime: row.meeting_time,
     location: row.location,
     members: row.members,
-    status: row.status as Club["status"],
+    status: calculateClubStatus(row.last_edited_at),
+    visibilityState: row.visibility_state,
+    lastEditedAt: row.last_edited_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
-export async function fetchAllClubs(): Promise<Club[]> {
-  if (!supabaseConfigured) return [];
-
+export async function fetchVisibleClubs(): Promise<Club[]> {
+  const supabase = createSupabasePublicClient();
   const { data, error } = await supabase
     .from("clubs")
-    .select(
-      "slug, name, category, short_description, about, upcoming_events, announcements, contact_info, meeting_time, location, members, status"
-    )
+    .select(clubSelectColumns)
+    .eq("visibility_state", "visible")
     .order("name");
 
   if (error) {
-    console.error("Failed to fetch clubs:", error.message);
-    return [];
+    throw new Error(`Failed to fetch clubs: ${error.message}`);
   }
 
-  return (data as ClubRow[]).map(rowToClub);
+  return ((data ?? []) as unknown as ClubRow[]).map(rowToClub);
 }
 
-export async function fetchClubBySlug(slug: string): Promise<Club | null> {
-  if (!supabaseConfigured) return null;
-
+export async function fetchVisibleClubBySlug(
+  slug: string,
+): Promise<Club | null> {
+  const supabase = createSupabasePublicClient();
   const { data, error } = await supabase
     .from("clubs")
-    .select(
-      "slug, name, category, short_description, about, upcoming_events, announcements, contact_info, meeting_time, location, members, status"
-    )
+    .select(clubSelectColumns)
     .eq("slug", slug)
-    .single();
-
-  if (error || !data) return null;
-
-  return rowToClub(data as ClubRow);
-}
-
-export async function verifyClubPin(
-  slug: string,
-  pin: string
-): Promise<{ valid: boolean; clubName: string | null }> {
-  if (!supabaseConfigured) return { valid: false, clubName: null };
-
-  const { data, error } = await supabase
-    .from("clubs")
-    .select("name, edit_pin")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !data) return { valid: false, clubName: null };
-
-  if (data.edit_pin === pin) {
-    return { valid: true, clubName: data.name };
-  }
-
-  return { valid: false, clubName: null };
-}
-
-export async function updateClub(
-  slug: string,
-  fields: Partial<
-    Pick<
-      Club,
-      | "about"
-      | "upcomingEvents"
-      | "announcements"
-      | "contactInfo"
-      | "meetingTime"
-      | "location"
-      | "shortDescription"
-    >
-  >
-): Promise<boolean> {
-  const mapped: Record<string, string> = {};
-  if (fields.about !== undefined) mapped.about = fields.about;
-  if (fields.upcomingEvents !== undefined)
-    mapped.upcoming_events = fields.upcomingEvents;
-  if (fields.announcements !== undefined)
-    mapped.announcements = fields.announcements;
-  if (fields.contactInfo !== undefined) mapped.contact_info = fields.contactInfo;
-  if (fields.meetingTime !== undefined) mapped.meeting_time = fields.meetingTime;
-  if (fields.location !== undefined) mapped.location = fields.location;
-  if (fields.shortDescription !== undefined)
-    mapped.short_description = fields.shortDescription;
-
-  if (!supabaseConfigured) return false;
-
-  mapped.updated_at = new Date().toISOString();
-
-  const { error } = await supabase
-    .from("clubs")
-    .update(mapped)
-    .eq("slug", slug);
+    .eq("visibility_state", "visible")
+    .maybeSingle();
 
   if (error) {
-    console.error("Failed to update club:", error.message);
-    return false;
+    throw new Error(`Failed to fetch club: ${error.message}`);
   }
 
-  return true;
-}
-
-export async function fetchClubSlugsAndNames(): Promise<
-  { slug: string; name: string }[]
-> {
-  if (!supabaseConfigured) return [];
-
-  const { data, error } = await supabase
-    .from("clubs")
-    .select("slug, name")
-    .order("name");
-
-  if (error) {
-    console.error("Failed to fetch club list:", error.message);
-    return [];
-  }
-
-  return data ?? [];
+  return data ? rowToClub(data as unknown as ClubRow) : null;
 }

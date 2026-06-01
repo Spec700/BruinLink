@@ -42,6 +42,7 @@ export type Club = {
   createdAt: string;
   updatedAt: string;
   profileImagePath: string | null;
+  profileImageUrl: string | null;
 };
 
 export type ClubRow = {
@@ -101,6 +102,12 @@ export const categoryLabels: Record<ClubCategory, string> = {
 };
 
 export function rowToClub(row: ClubRow): Club {
+  const supabase = createSupabasePublicClient();
+  const profileImageUrl = row.profile_image_path ? supabase.storage
+    .from("club-profile-images")
+    .getPublicUrl(row.profile_image_path).data.publicUrl 
+    : null;
+
   return {
     id: row.id,
     slug: row.slug,
@@ -120,6 +127,7 @@ export function rowToClub(row: ClubRow): Club {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     profileImagePath: row.profile_image_path,
+    profileImageUrl,
   };
 }
 

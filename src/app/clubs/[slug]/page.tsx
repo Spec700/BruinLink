@@ -77,9 +77,17 @@ export default async function ClubDashboardPage({ params }: ClubPageProps) {
           <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
             <div className="flex flex-col gap-5">
               <div className="flex flex-wrap items-center gap-4">
-                <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[var(--ucla-blue)] font-display text-2xl font-extrabold text-[var(--ucla-yellow)]">
-                  {initials(club.name)}
-                </div>
+                {club.profileImageUrl ? (
+                  <img
+                    src={club.profileImageUrl}
+                    alt={`${club.name} logo`}
+                    className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
+                    {initials(club.name)}
+                  </div>
+                )}
                 <div>
                   <p className="mb-2 inline-flex rounded-full bg-[var(--ucla-yellow-soft)] px-3 py-1 text-sm font-bold text-[oklch(0.35_0.1_73)]">
                     {categoryLabels[club.category]}

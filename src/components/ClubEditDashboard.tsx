@@ -174,9 +174,17 @@ export function ClubEditDashboard({
           <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
             <div className="flex flex-col gap-5">
               <div className="flex flex-wrap items-center gap-4">
-                <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[var(--ucla-blue)] font-display text-2xl font-extrabold text-[var(--ucla-yellow)]">
-                  {initials(club.name)}
-                </div>
+                {club.profileImageUrl ? (
+                  <img
+                    src={club.profileImageUrl}
+                    alt={`${club.name} logo`}
+                    className="h-20 w-20 rounded-lg object-cover"
+                  />
+                  ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-[var(--ucla-blue)] font-display text-2xl font-extrabold text-[var(--ucla-yellow)]">
+                    {initials(club.name)}
+                  </div>
+                  )}
                 <div>
                   <p className="mb-2 inline-flex rounded-full bg-[var(--ucla-yellow-soft)] px-3 py-1 text-sm font-bold text-[oklch(0.35_0.1_73)]">
                     Edit mode

@@ -227,9 +227,17 @@ export function ClubDirectory({ clubs }: ClubDirectoryProps) {
                     <div>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
+                          {club.profileImageUrl ? (
+                          <img
+                            src={club.profileImageUrl}
+                            alt={`${club.name} logo`}
+                            className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                          />
+                          ) : (
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
                             {initials(club.name)}
                           </div>
+                          )}
                           <div className="min-w-0">
                             <p className="line-clamp-2 font-display text-xl font-extrabold leading-snug text-[var(--foreground)]">
                               {club.name}

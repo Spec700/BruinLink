@@ -907,13 +907,13 @@ function ClubCardPreview({ club }: {club: ClubPreview | null}) {
     : (<div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-extrabold text-[var(--ucla-blue-strong)]">
     {initials(club.name)}
     </div>)}
-</div>
-<div className="min-w-0">
-<p className="line-clamp-2 font-display text-xl font-extrabold leading-snug text-[var(--foreground)]">
-{club.name}
-</p>
-</div>
-</div>
+    </div>
+      <div className="min-w-0">
+      <p className="line-clamp-2 font-display text-xl font-extrabold leading-snug text-[var(--foreground)]">
+      {club.name}
+      </p>
+    </div>
+    </div>
 <ArrowUpRight
 aria-hidden="true"
 className="h-5 w-5 shrink-0 text-[var(--muted)] transition group-hover:text-[var(--ucla-blue)]"

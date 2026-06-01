@@ -35,6 +35,7 @@ import type {
   ClubRegistrationRequest,
   ManagedClub,
 } from "@/lib/clubRegistration";
+import initials from "./ClubDirectory";
 
 type ReviewNotice = {
   tone: "success" | "warning";
@@ -420,8 +421,8 @@ export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
                     onApprove={() => approveRequest(request)}
                     onReject={() => rejectRequest(request)}
                   />
-                ))
-              ) : (
+                )))
+               : (
                 <div className="rounded-lg bg-[var(--surface-strong)] p-5 text-center">
                   <p className="font-display text-xl font-extrabold text-[var(--foreground)]">
                     No pending requests
@@ -599,9 +600,26 @@ function RequestCard({
           <h3 className="mt-1 font-display text-2xl font-extrabold text-[var(--foreground)]">
             {request.clubName}
           </h3>
-          <p className="mt-1 text-sm font-bold text-[var(--ucla-blue)]">
+          <p className="mt-2 text-sm font-bold text-[var(--ucla-blue)]">
             {categoryLabels[request.category]}
           </p>
+         
+        <p >
+              {request.profileImageUrl ? (
+            <img
+              src={request.profileImageUrl}
+              alt={`${request.clubName} profile image`}
+              className="mt-2 h-16 w-16 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="mt-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
+              {initials(request.clubName)}
+            </div>
+          )}
+        </p>
+
+
+
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="rounded-full bg-[var(--ucla-yellow-soft)] px-3 py-1 text-sm font-bold text-[oklch(0.35_0.1_73)]">

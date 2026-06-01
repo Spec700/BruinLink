@@ -14,6 +14,7 @@ import {
   type ValidatedClubRegistrationInput,
 } from "@/lib/clubRegistration";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { createSupabasePublicClient } from "./supabasePublic";
 
 type RegistrationRequestRow = {
   id: string;
@@ -332,6 +333,13 @@ export async function deleteClub(slug: string) {
 function rowToRegistrationRequest(
   row: RegistrationRequestRow,
 ): ClubRegistrationRequest {
+  const supabase = createSupabasePublicClient();
+  const profileImageUrl = row.profile_image_path
+    ? supabase.storage
+        .from("club-profile-images")
+        .getPublicUrl(row.profile_image_path).data.publicUrl
+    : null;
+
   return {
     id: row.id,
     slug: row.club_slug,
@@ -350,6 +358,7 @@ function rowToRegistrationRequest(
     adminNote: row.admin_note ?? undefined,
     profileImagePath: row.profile_image_path,
     members: row.members,
+    profileImageUrl,
   };
 }
 

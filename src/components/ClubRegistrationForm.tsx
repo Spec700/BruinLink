@@ -114,7 +114,7 @@ export function ClubRegistrationForm() {
       shortDescription: form.shortDescription,
       meetingTime: form.meetingTime,
       location: form.meetingLocation,
-      members: Number(form.memberCount || 0),
+      members: Number(form.members || 0),
       status: "preview",
       lastEditedAt: new Date().toISOString(),
       profileImage: form.profileImage,
@@ -340,9 +340,9 @@ export function ClubRegistrationForm() {
 
             <FieldError message={errors.category} />
              <TextInput
-                name="memberCount"
-                value={form.memberCount}
-                error={errors.memberCount}
+                name="members"
+                value={form.members}
+                error={errors.members}
                 onChange={(name, value) => updateField(name, value.replace(/[^0-9]/g, ''))}
           />
           </div>

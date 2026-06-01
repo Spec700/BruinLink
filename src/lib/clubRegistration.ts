@@ -36,6 +36,8 @@ export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category" | "
   reviewedAt?: string;
   adminNote?: string;
   profileImagePath?: string | null;
+  members: number;
+  profileImageUrl?: string | null;
 };
 
 
@@ -51,7 +53,7 @@ export type ManagedClub = {
   status: ClubStatus;
   visibilityState: ClubVisibilityState;
   lastEditedAt: string;
-
+  profileImageUrl?: string | null;
 };
 
 export type AdminReviewData = {
@@ -102,7 +104,7 @@ export const initialRegistrationInput: ClubRegistrationInput = {
   meetingTime: "",
   meetingLocation: {name: ""},
   publicContactEmail: "",
-  memberCount: 0,
+  members: 0,
 };
 
 
@@ -120,7 +122,7 @@ export const registrationFieldLabels: Record<
   meetingTime: "Meeting time",
   meetingLocation: "Meeting location",
   publicContactEmail: "Public contact email",
-  memberCount: "Number of members"
+  members: "Number of members"
 };
 
 export function isClubCategory(value: string): value is ClubCategory {
@@ -183,7 +185,7 @@ export function normalizeRegistrationInput(
     },
     publicContactEmail: input.publicContactEmail.trim(),
     profileImage: input.profileImage,
-    memberCount: input.memberCount
+    members: input.members
   };
 }
 
@@ -202,7 +204,7 @@ export function validateRegistrationInput(
     "meetingTime",
     "meetingLocation",
     "publicContactEmail",
-    "memberCount"
+    "members"
   ] satisfies Array<keyof ClubRegistrationInput>) {
     if (!data[field]) {
       errors[field] = `${registrationFieldLabels[field]} is required.`;
@@ -212,8 +214,8 @@ export function validateRegistrationInput(
     errors.meetingLocation = "Meeting Location is required.";
   }
 
-  if(!isValidMemberCount(data.memberCount)){
-    errors.memberCount = "Enter a valid number of members (0 or more).";
+  if(!isValidMemberCount(data.members)){
+    errors.members = "Enter a valid number of members (0 or more).";
   }
   
 

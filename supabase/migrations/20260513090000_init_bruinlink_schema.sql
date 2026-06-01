@@ -143,7 +143,7 @@ begin
     'visible',
     generated_edit_code_hash,
     now(),
-    null
+    request_record.profile_image_path
   );
 
   update public.club_registration_requests

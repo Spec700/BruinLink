@@ -5,6 +5,7 @@ import  initials  from "./ClubDirectory"
 import Link from "next/link";
 import {
   ArrowUpRight,
+  Users,
   ArrowLeft,
   Building2,
   CalendarDays,
@@ -14,7 +15,7 @@ import {
   Send,
   UserRound,
 } from "lucide-react";
-import { use, useEffect, useMemo, useState, useTransition } from "react";
+import { use, useEffect, useMemo, useState, useTransition, useRef } from "react";
 import { submitClubRegistration } from "@/app/register/actions";
 import { categories, categoryLabels, type ClubCategory } from "@/lib/clubs";
 
@@ -26,6 +27,7 @@ import {
   type RegistrationErrors,
   type LocationData
 } from "@/lib/clubRegistration";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 type FieldName = keyof ClubRegistrationInput;
 
@@ -34,7 +36,7 @@ type ClubPreview = {
   category: ClubCategory | "";
   shortDescription: string;
   meetingTime: string;
-  location: LocationData | null;
+  location: LocationData;
   members: number;
   status: string;
   lastEditedAt: string;
@@ -494,8 +496,14 @@ function ImageUpload({
   error?: string;
   onChange: (file: File | null) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const onChooseImage = () => {
+      inputRef.current?.click();
+    
+  }
   return (
-    <div>
+    <div className="flex flex-col gap-3">
       <label
         htmlFor={name}
         className="text-sm font-bold text-[var(--foreground)]"
@@ -503,17 +511,38 @@ function ImageUpload({
         {registrationFieldLabels.profileImage}
       </label>
 
-      <input
+     <input
         id={name}
+        style={{
+          display: 'none'
+        }}
+        ref={inputRef}
         type="file"
         accept="image/png,image/jpeg,image/webp"
-        onChange={(event) => {
-          const file = event.target.files?.[0] ?? null;
-          onChange(file);
+         onChange={(event) => {
+          const image = event.target.files?.[0] ?? null;
+          onChange(image);
         }}
-        className="mt-2 block w-full text-sm"
       />
 
+      <div className="grid grid-cols-2 gap-2">
+        <button className="`h-11 rounded-lg border px-3 text-left text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)]
+        border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--ucla-blue)]
+        "
+        type = "button"
+        onClick={onChooseImage}
+        >
+          <p>Upload Image</p>
+        </button>
+
+        {value && 
+        <button className = "px-1 text-left">
+          <p>Image uploaded: {value.name}</p>
+        </button>
+        }
+      </div>
+      
+      
       <FieldError message={error} />
     </div>
   );
@@ -529,26 +558,33 @@ function LocationAutocomplete({
   icon,
   }: {
     name: FieldName;
-    value: LocationData | null;
+    value: LocationData;
     error?: string;
     icon?: React.ReactNode;
     onChange: (
       name: FieldName,
-      value: LocationData | null
+      value: LocationData
     ) => void;
   }) {
   /* The query is what */
   const [query, setQuery] = useState(
       value
-        ? [value.name, value.city, value.state, value.country]
+        ? [value.name, value.city, value.state, value.country, value.room]
             .filter(Boolean)
             .join(", ")
         : ""
     );
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [roomNumber, setRoomNumber] = useState(value?.room ?? 0);
 
-  
+  const HandleRoomChange = (newRoom: number) => {
+    setRoomNumber(newRoom);
+    onChange(name, {
+    ...value,
+    room: roomNumber,
+  });
+  }
 
   useEffect(() => {
     if (query.length < 3) {
@@ -585,6 +621,7 @@ function LocationAutocomplete({
     city: props.city,
     state: props.state,
     country: props.country,
+    room: props.room
   };
 
   const label = [
@@ -592,44 +629,78 @@ function LocationAutocomplete({
     location.city,
     location.state,
     location.country,
+    location.room
   ]
     .filter(Boolean)
     .join(", ");
 
   setQuery(label);
   setResults([]);
-
   onChange(name, location);
 };
 
   return (
-    <div>
-      <label 
-        htmlFor={name}
-        className="text-sm font-bold text-[var(--foreground)]">
-        {registrationFieldLabels.meetingLocation}
-      </label>
-      <div style={{ position: "relative" }} className={`mt-2 flex h-12 items-center gap-3 rounded-lg border bg-[var(--background)] px-3 transition focus-within:border-[var(--ucla-blue)] ${
-          error ? "border-[var(--danger)]" : "border-[var(--line)]"
-        }`}>
-        {icon ? (
-          <span className="text-[var(--ucla-blue)]">{icon}</span>
-        ) : null}
+   <div className="mt-2 flex gap-3 items-start">
+  
+  {/* Location Field */}
+  <div className="flex-1">
+    <label
+      htmlFor={name}
+      className="mb-1 block text-sm font-bold text-[var(--foreground)]"
+    >
+      {registrationFieldLabels.meetingLocation}
+    </label>
 
-        <input
-          type="text"
-          name={name}
-          value={query}
-          onChange={(e) => {
+    <div
+      className={`flex h-12 items-center gap-3 rounded-lg border bg-[var(--background)] px-3 transition focus-within:border-[var(--ucla-blue)] ${
+        error ? "border-[var(--danger)]" : "border-[var(--line)]"
+      }`}
+    >
+      {icon ? (
+        <span className="text-[var(--ucla-blue)]">{icon}</span>
+      ) : null}
+
+      <input
+        type="text"
+        name={name}
+        value={query}
+        onChange={(e) => {
           setQuery(e.target.value);
-          onChange(name, null);
+          onChange(name, {
+            ...value,
+            room: roomNumber,
+          });
         }}
-          className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
-        />
-      </div>
+        className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
+      />
+    </div>
+  </div>
 
+  {/* Room Number Field */}
+  <div className="w-32">
+    <label
+      htmlFor="roomNumber"
+      className="mb-1 block text-sm font-bold text-[var(--foreground)]"
+    >
+      Room Number
+    </label>
+
+    <div
+      className={`flex h-12 items-center rounded-lg border bg-[var(--background)] px-3 focus-within:border-[var(--ucla-blue)] ${
+        error ? "border-[var(--danger)]" : "border-[var(--line)]"
+      }`}
+    >
+      <input
+        type="number"
+        value={roomNumber}
+        onChange={(e) => HandleRoomChange(e.target.valueAsNumber)}
+        min="1"
+        id="roomNumber"
+        className="h-full w-full bg-transparent text-sm text-[var(--foreground)] outline-none"
+      />
+    </div>
       
-
+    </div>
       {results.length > 0 && (
         <div
           style={{
@@ -778,35 +849,32 @@ function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-xl rounded-lg bg-[var(--surface)] p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-lg font-extrabold text-[var(--foreground)]">
-            Preview your listing
-          </h2>
-          <button onClick={onClose} className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]">
-            ✕
-          </button>
-        </div>
+      <div className="w-full max-w-xl rounded-lg bg-[var(--surface)] p-6 shadow-xl flex flex-col">
+  <div className="mb-4 flex items-center justify-between">
+    <h2 className="font-display text-lg font-extrabold text-[var(--foreground)]">
+      Preview your listing
+    </h2>
+  </div>
 
-        <ClubCardPreview club={previewClub} />
+  <ClubCardPreview club={previewClub} />
 
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-bold text-[var(--foreground)] hover:border-[var(--ucla-blue)]"
-          >
-            Continue editing
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isPending}
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] hover:bg-[var(--ucla-blue-strong)] disabled:opacity-60"
-          >
-            <Send className="h-4 w-4" aria-hidden />
-            {isPending ? "Submitting…" : "Confirm"}
-          </button>
-        </div>
-      </div>
+  <div className="mt-5 flex justify-end gap-2">
+    <button
+      onClick={onClose}
+      className="rounded-lg border border-[var(--line)] px-4 py-2 text-sm font-bold text-[var(--foreground)] hover:border-[var(--ucla-blue)]"
+    >
+      Continue editing
+    </button>
+    <button
+      onClick={onConfirm}
+      disabled={isPending}
+      className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--ucla-blue)] px-4 text-sm font-bold text-[var(--ucla-yellow)] hover:bg-[var(--ucla-blue-strong)] disabled:opacity-60"
+    >
+      <Send className="h-4 w-4" aria-hidden />
+      {isPending ? "Submitting…" : "Confirm"}
+    </button>
+  </div>
+</div>
     </div>
   );
 }
@@ -815,48 +883,83 @@ function Modal({
 function ClubCardPreview({ club }: {club: ClubPreview | null}) {
   if(!club){
     return(
-      <div>Unable to produce card</div>
+       <div>Unable to produce card</div>
     );
-  }const [objectUrl, setObjectUrl] = useState<string | null>(null);
-
+  }
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
   useEffect(() => {
-    if (!club?.profileImage) { setObjectUrl(null); return; }
-    const url = URL.createObjectURL(club.profileImage);
-    setObjectUrl(url);
-    return () => URL.revokeObjectURL(url); // cleaned up on unmount
-  }, [club?.profileImage]);
-
-  if (!club) return <div>Unable to produce card</div>;
-
+  if (!club?.profileImage) { setObjectUrl(null); return; }
+  const url = URL.createObjectURL(club.profileImage);
+  setObjectUrl(url);
+  return () => URL.revokeObjectURL(url); 
+    }, [club?.profileImage]);
   return (
-    <div className="flex min-h-[292px] flex-col justify-between rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
-      <div className="flex items-start gap-3">
-        {objectUrl ? (
-          <img src={objectUrl} className="h-12 w-12 rounded-lg object-cover" alt="" />
-        ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-extrabold text-[var(--ucla-blue-strong)]">
-            {initials(club.name)}
-          </div>
-        )}
-        <div>
-          <p className="font-display text-xl font-extrabold">{club.name}</p>
-          <p className="text-sm font-bold text-[var(--ucla-blue)]">
-            {categoryLabels[club.category as ClubCategory] ?? club.category}
-          </p>
-        </div>
-        <ArrowUpRight
+  <Link
+      key=""
+      href=""
+    className="group flex min-h-[292px] flex-col justify-between rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--ucla-blue)] hover:shadow-[0_18px_42px_oklch(0.35_0.09_252_/_0.14)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)]"
+    >
+    <div>
+    <div className="flex items-start justify-between gap-3">
+    <div className="flex items-center gap-3">
+    <div>
+    {objectUrl ? (<img src={objectUrl} className="h-12 w-12 rounded-lg object-cover" alt="" />) 
+    : (<div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-extrabold text-[var(--ucla-blue-strong)]">
+    {initials(club.name)}
+    </div>)}
+</div>
+<div className="min-w-0">
+<p className="line-clamp-2 font-display text-xl font-extrabold leading-snug text-[var(--foreground)]">
+{club.name}
+</p>
+</div>
+</div>
+<ArrowUpRight
+aria-hidden="true"
+className="h-5 w-5 shrink-0 text-[var(--muted)] transition group-hover:text-[var(--ucla-blue)]"
+/>
+</div>
+<p className="mt-4 line-clamp-3 text-base leading-7 text-[var(--muted)]">
+{club.shortDescription}
+</p>
+</div>
+<div className="mt-5 grid gap-3">
+<div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+<CalendarDays
+aria-hidden="true"
+className="h-4 w-4 text-[var(--ucla-blue)]"
+/>
+<span className="min-w-0 truncate">{club.meetingTime}</span>
+</div>
+<div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+<MapPin
+aria-hidden="true"
+className="h-4 w-4 text-[var(--ucla-blue)]"
+/>
+<span className="min-w-0 truncate">{club.location
+? [club.location.name, club.location.city, club.location.state, club.location.room].filter(Boolean).join(", ")
+: "No location"}</span>
+</div>
+<div className="flex items-center justify-between gap-2 pt-2">
+<div className="min-w-0">
+<span
+className="rounded-full px-3 py-1 text-xs font-bold bg-[var(--ucla-yellow-soft)] text-[oklch(0.36_0.09_74)]">
+              current
+</span>
+<p className="mt-2 truncate text-xs font-bold text-[var(--muted)]">
+              Last updated: Today
+</p>
+</div>
+<span className="flex items-center gap-1 text-sm font-bold text-[var(--foreground)]">
+        <Users 
             aria-hidden="true"
-            className="h-5 w-5 shrink-0 text-[var(--muted)] transition group-hover:text-[var(--ucla-blue)]"
-        />
-      </div>
-      <p className="mt-4 text-[var(--muted)]">{club.shortDescription}</p>
-      <div className="mt-5 text-sm text-[var(--muted)]">
-        {club.meetingTime} •{" "}
-        {club.location
-          ? [club.location.name, club.location.city, club.location.state].filter(Boolean).join(", ")
-          : "No location"}
+            className="h-4 w-4 text-[var(--ucla-blue)]"
+            />
+            {club.members}
+            </span>
       </div>
     </div>
+</Link>
   );
 }
 
@@ -893,6 +996,8 @@ function MeetingTimeInput({
     setTime(newTime);
     onChange(name, day && newTime ? `${day} at ${newTime}` : newTime);
   };
+  
+
 
   return (
     <div>
@@ -930,3 +1035,4 @@ function MeetingTimeInput({
     </div>
   );
 }
+

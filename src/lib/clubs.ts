@@ -41,6 +41,7 @@ export type Club = {
   lastEditedAt: string;
   createdAt: string;
   updatedAt: string;
+  profileImagePath: string | null;
 };
 
 export type ClubRow = {
@@ -61,6 +62,7 @@ export type ClubRow = {
   last_edited_at: string;
   created_at: string;
   updated_at: string;
+  profile_image_path: string | null;
 };
 
 export const clubSelectColumns = [
@@ -81,6 +83,7 @@ export const clubSelectColumns = [
   "last_edited_at",
   "created_at",
   "updated_at",
+  "profile_image_path",
 ].join(", ");
 
 export const categoryLabels: Record<ClubCategory, string> = {
@@ -116,6 +119,7 @@ export function rowToClub(row: ClubRow): Club {
     lastEditedAt: row.last_edited_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    profileImagePath: row.profile_image_path,
   };
 }
 

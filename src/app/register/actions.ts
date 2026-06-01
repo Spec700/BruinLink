@@ -9,6 +9,7 @@ import {
   type ClubRegistrationInput,
   type RegistrationErrors,
 } from "@/lib/clubRegistration";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 export type RegistrationSubmitResult =
   | {
@@ -36,8 +37,12 @@ export async function submitClubRegistration(
     };
   }
 
+ 
+
   try {
-    const result = await createRegistrationRequest(validation.data);
+    const result = await createRegistrationRequest(
+        validation.data, 
+        input.profileImage );
 
     if (!result.ok) {
       return {

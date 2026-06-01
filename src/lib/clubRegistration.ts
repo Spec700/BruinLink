@@ -13,10 +13,10 @@ export type ClubRegistrationInput = {
   shortDescription: string;
   about: string;
   meetingTime: string;
-  meetingLocation: LocationData | null;
-  profileImage: File | null
+  meetingLocation: LocationData;
+  profileImage: File | null;
   publicContactEmail: string;
-  memberCount: string
+  members: number
 };
 
 export type LocationData = {
@@ -24,9 +24,10 @@ export type LocationData = {
   city?: string;
   state?: string;
   country?: string;
+  room?: number;
 };
 
-export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category"> & {
+export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category" | "profileImage"> & {
   id: string;
   slug: string;
   category: ClubCategory;
@@ -34,17 +35,14 @@ export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category"> & 
   createdAt: string;
   reviewedAt?: string;
   adminNote?: string;
+  profileImagePath?: string | null;
 };
 
-export type ClubImage = {
-  url: string;
-  alt?: string;
-};
 
 export type ManagedClub = {
   id: string;
   slug: string;
-  profileImage?: ClubImage | null;
+  profileImage: string | null;
   name: string;
   category: ClubCategory;
   contactInfo: string;
@@ -53,6 +51,7 @@ export type ManagedClub = {
   status: ClubStatus;
   visibilityState: ClubVisibilityState;
   lastEditedAt: string;
+
 };
 
 export type AdminReviewData = {
@@ -103,7 +102,7 @@ export const initialRegistrationInput: ClubRegistrationInput = {
   meetingTime: "",
   meetingLocation: {name: ""},
   publicContactEmail: "",
-  memberCount: "",
+  memberCount: 0,
 };
 
 
@@ -114,7 +113,7 @@ export const registrationFieldLabels: Record<
   requesterName: "Responsible contact name",
   requesterEmail: "Responsible contact email",
   clubName: "Club name",
-  profileImage: "Club Porfile Image (optional)",
+  profileImage: "Club Profile Image (optional)",
   category: "Category",
   shortDescription: "Short description",
   about: "About",
@@ -128,8 +127,8 @@ export function isClubCategory(value: string): value is ClubCategory {
   return categories.some((category) => category === value);
 }
 
-export function isValidMemberCount(count: string){
-    return Number(count) > 0;
+export function isValidMemberCount(count: number){
+    return count > 0;
 }
 
 export function isValidLocation(location: any ){
@@ -137,7 +136,7 @@ export function isValidLocation(location: any ){
       console.log(`no location found`);
       return false;
     }
-    const requiredFields = ["name", "city", "state", "country"];
+    const requiredFields = ["name", "city", "state", "country", "room"];
     for(const field of requiredFields){
       if (!(field in location)){
         console.log(`${field} not found in ${location}`)
@@ -174,17 +173,17 @@ export function normalizeRegistrationInput(
     shortDescription: input.shortDescription.trim(),
     about: input.about.trim(),
     meetingTime: input.meetingTime.trim(),
-    meetingLocation: input.meetingLocation ? {
+    meetingLocation: {
       ...input.meetingLocation,
       name: input.meetingLocation.name.trim(),
       city: input.meetingLocation.city?.trim(),
       state: input.meetingLocation.state?.trim(),
       country: input.meetingLocation.country?.trim(),
-    }
-  : null,
+      room: input.meetingLocation.room
+    },
     publicContactEmail: input.publicContactEmail.trim(),
     profileImage: input.profileImage,
-    memberCount: input.memberCount.trim()
+    memberCount: input.memberCount
   };
 }
 
@@ -210,11 +209,11 @@ export function validateRegistrationInput(
     }
   }
   if(!isValidLocation(data.meetingLocation)){
-    errors.meetingLocation = "problem is required.";
+    errors.meetingLocation = "Meeting Location is required.";
   }
 
   if(!isValidMemberCount(data.memberCount)){
-    errors.memberCount = "Invalid member count";
+    errors.memberCount = "Enter a valid number of members (0 or more).";
   }
   
 

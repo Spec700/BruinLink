@@ -32,6 +32,8 @@ type RegistrationRequestRow = {
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
+  profile_image_path: string | null;
+  members: number;
 };
 
 const registrationRequestColumns = [
@@ -51,6 +53,8 @@ const registrationRequestColumns = [
   "reviewed_at",
   "created_at",
   "updated_at",
+  "profile_image_path",
+  "members",
 ].join(", ");
 
 export async function fetchAdminReviewData(): Promise<AdminReviewData> {
@@ -91,6 +95,7 @@ export async function fetchAdminReviewData(): Promise<AdminReviewData> {
         status: club.status,
         visibilityState: club.visibilityState,
         lastEditedAt: club.lastEditedAt,
+        profileImage: club.profileImagePath,
       };
     }),
   };
@@ -98,8 +103,30 @@ export async function fetchAdminReviewData(): Promise<AdminReviewData> {
 
 export async function createRegistrationRequest(
   input: ValidatedClubRegistrationInput,
+  image: File | null
 ) {
   const supabase = createSupabaseAdminClient();
+
+  let profileImagePath: string | null = null;
+
+  if (image) {
+    const extension =
+      image.name.split(".").pop()?.toLowerCase() ?? "jpg";
+
+    profileImagePath =
+      `${input.slug}/${Date.now()}.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("club-profile-images")
+      .upload(profileImagePath, image);
+
+    if (uploadError) {
+      throw new Error(
+        `Failed to upload image: ${uploadError.message}`
+      );
+    }
+  }
+
 
   const { data: existingClub, error: existingClubError } = await supabase
     .from("clubs")
@@ -152,6 +179,8 @@ export async function createRegistrationRequest(
       meeting_location: input.meetingLocation,
       public_contact_email: input.publicContactEmail,
       status: "pending",
+      profile_image_path: profileImagePath,
+      members: Number(input.members ?? 0),
     })
     .select("id")
     .single();
@@ -319,6 +348,8 @@ function rowToRegistrationRequest(
     createdAt: row.created_at,
     reviewedAt: row.reviewed_at ?? undefined,
     adminNote: row.admin_note ?? undefined,
+    profileImagePath: row.profile_image_path,
+    members: row.members,
   };
 }
 

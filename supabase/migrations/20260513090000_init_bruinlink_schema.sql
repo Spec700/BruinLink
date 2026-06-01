@@ -18,7 +18,8 @@ create table public.clubs (
   edit_code_hash text not null unique,
   last_edited_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  profile_image_path text
 );
 
 create table public.club_registration_requests (
@@ -37,7 +38,9 @@ create table public.club_registration_requests (
   admin_note text,
   reviewed_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  profile_image_path text,
+  members integer not null default 0 check (members >= 0),
 );
 
 create unique index club_registration_requests_active_slug_key
@@ -121,7 +124,8 @@ begin
     status,
     visibility_state,
     edit_code_hash,
-    last_edited_at
+    last_edited_at,
+    profile_image_path
   )
   values (
     request_record.club_slug,
@@ -138,7 +142,8 @@ begin
     'fresh',
     'visible',
     generated_edit_code_hash,
-    now()
+    now(),
+    null
   );
 
   update public.club_registration_requests

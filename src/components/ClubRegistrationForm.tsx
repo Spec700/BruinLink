@@ -15,7 +15,7 @@ import {
   Send,
   UserRound,
 } from "lucide-react";
-import { use, useEffect, useMemo, useState, useTransition, useRef } from "react";
+import { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import { submitClubRegistration } from "@/app/register/actions";
 import { categories, categoryLabels, type ClubCategory } from "@/lib/clubs";
 
@@ -27,7 +27,6 @@ import {
   type RegistrationErrors,
   type LocationData
 } from "@/lib/clubRegistration";
-import { SupabaseClient } from "@supabase/supabase-js";
 
 type FieldName = keyof ClubRegistrationInput;
 
@@ -71,7 +70,7 @@ export function ClubRegistrationForm() {
   const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
 
-  function updateField(field: FieldName, value: any) {
+  function updateField(field: FieldName, value: ClubRegistrationInput[FieldName]) {
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -341,9 +340,9 @@ export function ClubRegistrationForm() {
             <FieldError message={errors.category} />
              <TextInput
                 name="members"
-                value={form.members}
+                value={String(form.members)}
                 error={errors.members}
-                onChange={(name, value) => updateField(name, value.replace(/[^0-9]/g, ''))}
+                onChange={(name, value) => updateField(name, Number(value.replace(/[^0-9]/g, '')))}
           />
           </div>
         </div>
@@ -550,6 +549,16 @@ function ImageUpload({
 
 
 
+type PhotonFeature = {
+  properties: {
+    name?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    room?: number;
+  };
+};
+
 function LocationAutocomplete({
   name,
   value,
@@ -574,7 +583,7 @@ function LocationAutocomplete({
             .join(", ")
         : ""
     );
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<PhotonFeature[]>([]);
   const [loading, setLoading] = useState(false);
   const [roomNumber, setRoomNumber] = useState(value?.room ?? 0);
 
@@ -587,12 +596,12 @@ function LocationAutocomplete({
   }
 
   useEffect(() => {
-    if (query.length < 3) {
-      setResults([]);
-      return;
-    }
-
     const timeout = setTimeout(async () => {
+      if (query.length < 3) {
+        setResults([]);
+        return;
+      }
+
       try {
         setLoading(true);
 
@@ -602,7 +611,7 @@ function LocationAutocomplete({
 
         const data = await res.json();
         setResults(data.features || []);
-       
+
       } catch (err) {
         console.error("Search failed:", err);
       } finally {
@@ -613,11 +622,11 @@ function LocationAutocomplete({
     return () => clearTimeout(timeout);
   }, [query]);
 
-  const handleSelect = (feature: any) => {
+  const handleSelect = (feature: PhotonFeature) => {
   const props = feature.properties;
 
   const location: LocationData = {
-    name: props.name,
+    name: props.name ?? "",
     city: props.city,
     state: props.state,
     country: props.country,
@@ -881,18 +890,24 @@ function Modal({
   
 
 function ClubCardPreview({ club }: {club: ClubPreview | null}) {
-  if(!club){
-    return(
+  const profileImage = club?.profileImage ?? null;
+  const objectUrl = useMemo(
+    () => (profileImage ? URL.createObjectURL(profileImage) : null),
+    [profileImage],
+  );
+  useEffect(() => {
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [objectUrl]);
+
+  if (!club) {
+    return (
        <div>Unable to produce card</div>
     );
   }
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  useEffect(() => {
-  if (!club?.profileImage) { setObjectUrl(null); return; }
-  const url = URL.createObjectURL(club.profileImage);
-  setObjectUrl(url);
-  return () => URL.revokeObjectURL(url); 
-    }, [club?.profileImage]);
   return (
   <Link
       key=""

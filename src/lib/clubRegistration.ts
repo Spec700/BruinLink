@@ -166,12 +166,12 @@ export function formatLocation(location: LocationData): string {
     .join(", ");
 }
 
-export function isValidLocation(location: any ){
+export function isValidLocation(location: LocationData | null | undefined){
     if(!location){
       console.log(`no location found`);
       return false;
     }
-    const requiredFields = ["name", "city", "state", "country", "room"];
+    const requiredFields: (keyof LocationData)[] = ["name", "city", "state", "country", "room"];
     for(const field of requiredFields){
       const value = location[field];
       if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")){

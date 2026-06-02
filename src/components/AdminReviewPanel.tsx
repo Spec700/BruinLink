@@ -604,23 +604,19 @@ function RequestCard({
           <p className="mt-2 text-sm font-bold text-[var(--ucla-blue)]">
             {categoryLabels[request.category]}
           </p>
-         
-        <p >
-              {request.profileImageUrl ? (
-            <img
-              src={request.profileImageUrl}
-              alt={`${request.clubName} profile image`}
-              className="mt-2 h-16 w-16 rounded-lg object-cover"
-            />
-          ) : (
-            <div className="mt-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
-              {initials(request.clubName)}
-            </div>
-          )}
-        </p>
-
-
-
+          <div className="mt-2">
+            {request.profileImageUrl ? (
+              <img
+                src={request.profileImageUrl}
+                alt={`${request.clubName} profile image`}
+                className="h-16 w-16 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
+                {initials(request.clubName)}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="rounded-full bg-[var(--ucla-yellow-soft)] px-3 py-1 text-sm font-bold text-[oklch(0.35_0.1_73)]">

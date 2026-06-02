@@ -8,6 +8,7 @@ import {
 } from "@/lib/clubs";
 import {
   generateEditCode,
+  formatLocation,
   hashEditCode,
   parseLocation,
   serializeLocation,
@@ -28,7 +29,7 @@ type RegistrationRequestRow = {
   short_description: string;
   about: string;
   meeting_time: string;
-  meeting_location: string;
+  location: string | Record<string, unknown> | null;
   public_contact_email: string;
   status: ClubRegistrationRequest["status"];
   admin_note: string | null;
@@ -49,7 +50,7 @@ const registrationRequestColumns = [
   "short_description",
   "about",
   "meeting_time",
-  "meeting_location",
+  "location",
   "public_contact_email",
   "status",
   "admin_note",
@@ -179,7 +180,7 @@ export async function createRegistrationRequest(
       short_description: input.shortDescription,
       about: input.about,
       meeting_time: input.meetingTime,
-      meeting_location: serializeLocation(input.meetingLocation),
+      location: serializeLocation(input.meetingLocation),
       public_contact_email: input.publicContactEmail,
       status: "pending",
       profile_image_path: profileImagePath,
@@ -207,31 +208,65 @@ export async function approveRegistrationRequest(
   const supabase = createSupabaseAdminClient();
   const editCode = await generateUniqueEditCodeHash();
 
-  const { data, error } = await supabase.rpc(
-    "approve_club_registration_request",
-    {
-      target_request_id: requestId,
-      generated_edit_code_hash: editCode.hash,
-      approval_note: adminNote,
-    },
-  );
+  const { data: requestRecord, error: requestError } = await supabase
+    .from("club_registration_requests")
+    .select(registrationRequestColumns)
+    .eq("id", requestId)
+    .single();
 
-  if (error) {
-    throw new Error(`Failed to approve request: ${error.message}`);
+  if (requestError) {
+    throw new Error(`Failed to approve request: ${requestError.message}`);
+  }
+
+  const request = requestRecord as unknown as RegistrationRequestRow;
+
+  if (request.status !== "pending") {
+    throw new Error("Registration request has already been reviewed.");
+  }
+
+  const { error: insertError } = await supabase.from("clubs").insert({
+    slug: request.club_slug,
+    name: request.club_name,
+    category: request.category,
+    short_description: request.short_description,
+    about: request.about,
+    upcoming_events: "",
+    announcements: "",
+    contact_info: request.public_contact_email,
+    meeting_time: request.meeting_time,
+    location: formatLocation(parseLocation(request.location)),
+    members: request.members,
+    status: "fresh",
+    visibility_state: "visible",
+    edit_code_hash: editCode.hash,
+    last_edited_at: new Date().toISOString(),
+    profile_image_path: request.profile_image_path,
+  });
+
+  if (insertError) {
+    throw new Error(`Failed to create club listing: ${insertError.message}`);
+  }
+
+  const { error: updateError } = await supabase
+    .from("club_registration_requests")
+    .update({
+      status: "approved",
+      admin_note: adminNote.trim() || null,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", requestId);
+
+  if (updateError) {
+    throw new Error(`Failed to mark request approved: ${updateError.message}`);
   }
 
   revalidatePath("/");
   revalidatePath("/admin");
-
-  const approved = Array.isArray(data) ? data[0] : data;
-
-  if (approved?.approved_club_slug) {
-    revalidatePath(`/clubs/${approved.approved_club_slug}`);
-  }
+  revalidatePath(`/clubs/${request.club_slug}`);
 
   return {
     editCode: editCode.plaintext,
-    clubName: approved?.approved_club_name ?? "Club",
+    clubName: request.club_name,
   };
 }
 
@@ -352,7 +387,7 @@ function rowToRegistrationRequest(
     shortDescription: row.short_description,
     about: row.about,
     meetingTime: row.meeting_time,
-    meetingLocation: parseLocation(row.meeting_location),
+    meetingLocation: parseLocation(row.location),
     publicContactEmail: row.public_contact_email,
     status: row.status,
     createdAt: row.created_at,

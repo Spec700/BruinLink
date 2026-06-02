@@ -133,25 +133,41 @@ export function isValidMemberCount(count: number){
     return count > 0;
 }
 
-export function serializeLocation(location: LocationData): string {
-  return JSON.stringify(location);
+export function serializeLocation(location: LocationData): LocationData {
+  return location;
 }
 
-export function parseLocation(value: string | null | undefined): LocationData {
+export function parseLocation(
+  value: string | Record<string, unknown> | null | undefined,
+): LocationData {
   if (!value) {
     return { name: "" };
   }
 
+  if (typeof value === "object") {
+    return normalizeParsedLocation(value);
+  }
+
   try {
     const parsed = JSON.parse(value);
-    if (parsed && typeof parsed === "object" && typeof parsed.name === "string") {
-      return parsed as LocationData;
+    if (parsed && typeof parsed === "object") {
+      return normalizeParsedLocation(parsed as Record<string, unknown>);
     }
   } catch {
     // still need?
   }
 
   return { name: value };
+}
+
+function normalizeParsedLocation(value: Record<string, unknown>): LocationData {
+  return {
+    name: typeof value.name === "string" ? value.name : "",
+    city: typeof value.city === "string" ? value.city : undefined,
+    state: typeof value.state === "string" ? value.state : undefined,
+    country: typeof value.country === "string" ? value.country : undefined,
+    room: typeof value.room === "number" ? value.room : undefined,
+  };
 }
 
 export function formatLocation(location: LocationData): string {

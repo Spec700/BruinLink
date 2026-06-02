@@ -559,6 +559,16 @@ type PhotonFeature = {
   };
 };
 
+function locationQueryLabel(location: LocationData) {
+  return [location.name, location.city, location.state, location.country]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function normalizeRoomNumber(value: number | "") {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 function LocationAutocomplete({
   name,
   value,
@@ -575,24 +585,22 @@ function LocationAutocomplete({
       value: LocationData
     ) => void;
   }) {
-  /* The query is what */
-  const [query, setQuery] = useState(
-      value
-        ? [value.name, value.city, value.state, value.country, value.room]
-            .filter(Boolean)
-            .join(", ")
-        : ""
-    );
+  const [query, setQuery] = useState(() => locationQueryLabel(value));
   const [results, setResults] = useState<PhotonFeature[]>([]);
   const [loading, setLoading] = useState(false);
-  const [roomNumber, setRoomNumber] = useState(value?.room ?? 0);
+  const [roomNumber, setRoomNumber] = useState<number | "">(
+    normalizeRoomNumber(value?.room ?? "") ?? "",
+  );
 
-  const HandleRoomChange = (newRoom: number) => {
-    setRoomNumber(newRoom);
+  function handleRoomChange(rawValue: string) {
+    const nextRoom =
+      rawValue === "" ? undefined : normalizeRoomNumber(Number(rawValue));
+    setRoomNumber(nextRoom ?? "");
     onChange(name, {
-    ...value,
-    room: roomNumber,
-  });
+      ...value,
+      name: query,
+      room: nextRoom,
+    });
   }
 
   useEffect(() => {
@@ -625,12 +633,13 @@ function LocationAutocomplete({
   const handleSelect = (feature: PhotonFeature) => {
   const props = feature.properties;
 
+  const room = normalizeRoomNumber(props.room ?? "");
   const location: LocationData = {
     name: props.name ?? "",
     city: props.city,
     state: props.state,
     country: props.country,
-    room: props.room
+    room,
   };
 
   const label = [
@@ -638,12 +647,12 @@ function LocationAutocomplete({
     location.city,
     location.state,
     location.country,
-    location.room
   ]
     .filter(Boolean)
     .join(", ");
 
   setQuery(label);
+  setRoomNumber(room ?? "");
   setResults([]);
   onChange(name, location);
 };
@@ -674,10 +683,12 @@ function LocationAutocomplete({
         name={name}
         value={query}
         onChange={(e) => {
-          setQuery(e.target.value);
+          const nextQuery = e.target.value;
+          setQuery(nextQuery);
           onChange(name, {
             ...value,
-            room: roomNumber,
+            name: nextQuery,
+            room: normalizeRoomNumber(roomNumber),
           });
         }}
         className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
@@ -702,7 +713,7 @@ function LocationAutocomplete({
       <input
         type="number"
         value={roomNumber}
-        onChange={(e) => HandleRoomChange(e.target.valueAsNumber)}
+        onChange={(e) => handleRoomChange(e.target.value)}
         min="1"
         id="roomNumber"
         className="h-full w-full bg-transparent text-sm text-[var(--foreground)] outline-none"
@@ -1050,4 +1061,3 @@ function MeetingTimeInput({
     </div>
   );
 }
-

@@ -194,6 +194,10 @@ export function isValidLocation(location: LocationData | null | undefined){
         console.log(`${field} is missing or empty in ${JSON.stringify(location)}`)
         return false;
       }
+      if (field === "room" && (typeof value !== "number" || !Number.isFinite(value) || value <= 0)) {
+        console.log(`room is invalid in ${JSON.stringify(location)}`);
+        return false;
+      }
     }
     return true;
 
@@ -231,7 +235,11 @@ export function normalizeRegistrationInput(
       city: input.meetingLocation.city?.trim(),
       state: input.meetingLocation.state?.trim(),
       country: input.meetingLocation.country?.trim(),
-      room: input.meetingLocation.room
+      room:
+        typeof input.meetingLocation.room === "number" &&
+        Number.isFinite(input.meetingLocation.room)
+          ? input.meetingLocation.room
+          : undefined
     },
     publicContactEmail: input.publicContactEmail.trim(),
     profileImage: input.profileImage,

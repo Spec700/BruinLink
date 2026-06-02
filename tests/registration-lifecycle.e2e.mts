@@ -1,20 +1,7 @@
 /**
- * Fully automated end-to-end test for the BruinLink club lifecycle.
- *
- * Unlike test_emails.py (which re-implements its own regex), this test imports
- * and exercises the ACTUAL production functions from src/lib so it stays in sync
- * with the code that ships. It walks a single club from the moment it is
- * submitted through approval and self-service editing, hitting every pure-logic
- * stage the real Server Actions rely on:
- *
- *   1. Registration validation  (validateRegistrationInput / slugifyClubName)
- *   2. Edit-code issuance        (generateEditCode / isEditCodeFormat)
- *   3. Edit-code verification    (hashEditCode round-trip + tamper rejection)
- *   4. Public freshness display  (calculateClubStatus over time)
- *
- * It needs no dev server, no Supabase, and no secrets, so it runs anywhere with:
+ *end-to-end test
  *   npm run test:e2e
- * It prints a PASS/FAIL line per check and exits 0 only when everything passes.
+ * prints a PASS/FAIL line per check and exits 0 only when everything passes
  */
 
 import {
@@ -26,10 +13,6 @@ import {
   type ClubRegistrationInput,
 } from "@/lib/clubRegistration";
 import { calculateClubStatus } from "@/lib/clubFreshness";
-
-// ---------------------------------------------------------------------------
-// Minimal assertion harness (same spirit as test_emails.py: no test framework)
-// ---------------------------------------------------------------------------
 
 let passed = 0;
 let failed = 0;
@@ -51,9 +34,7 @@ function eq<T>(name: string, actual: T, expected: T) {
   record(name, ok, ok ? "" : `expected ${String(expected)}, got ${String(actual)}`);
 }
 
-// ---------------------------------------------------------------------------
 // Test data builder
-// ---------------------------------------------------------------------------
 
 function buildValidInput(
   overrides: Partial<ClubRegistrationInput> = {},
@@ -80,10 +61,6 @@ function buildValidInput(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Stage 1 — Registration validation (mirrors submitClubRegistration)
-// ---------------------------------------------------------------------------
-
 console.log("Running BruinLink club lifecycle E2E tests...\n" + "=".repeat(70));
 console.log("\nStage 1: Registration validation");
 
@@ -94,20 +71,11 @@ if (validResult.ok) {
   eq("valid submission reports no errors", Object.keys(validResult.errors).length, 0);
 }
 
-// Each invalid case must be rejected AND flag the offending field.
-//
-// NOTE: "incomplete meeting location is rejected" is EXPECTED TO FAIL today.
-// It documents a real production bug: normalizeRegistrationInput() always
-// spreads city/state/country/room onto meetingLocation (as `undefined`), so
-// isValidLocation()'s `field in location` presence check can never fail and an
-// incomplete location slips through. This assertion is intentionally left red
-// so CI surfaces the bug until isValidLocation is fixed to check VALUES, not
-// just key presence. See src/lib/clubRegistration.ts.
+// Each invalid case must be rejected and flag the offending field
 const invalidCases: Array<{
   name: string;
   field: keyof ClubRegistrationInput;
   input: ClubRegistrationInput;
-  knownBug?: boolean;
 }> = [
   {
     name: "missing requester name is rejected",
@@ -133,7 +101,6 @@ const invalidCases: Array<{
     name: "incomplete meeting location is rejected",
     field: "meetingLocation",
     input: buildValidInput({ meetingLocation: { name: "Boelter Hall" } }),
-    knownBug: true,
   },
   {
     name: "club name without alphanumerics is rejected",
@@ -145,17 +112,8 @@ const invalidCases: Array<{
 for (const testCase of invalidCases) {
   const result = validateRegistrationInput(testCase.input);
   const flaggedRightField = !result.ok && Boolean(result.errors[testCase.field]);
-  const detail = result.ok
-    ? testCase.knownBug
-      ? "accepted -- KNOWN BUG: isValidLocation only checks key presence (see note above)"
-      : "was accepted"
-    : `errors: ${Object.keys(result.errors).join(", ")}`;
-  check(testCase.name, flaggedRightField, detail);
+  check(testCase.name, flaggedRightField, result.ok ? "was accepted" : `errors: ${Object.keys(result.errors).join(", ")}`);
 }
-
-// ---------------------------------------------------------------------------
-// Stage 2 — Slug generation edge cases (used to build the public /clubs/[slug])
-// ---------------------------------------------------------------------------
 
 console.log("\nStage 2: Slug generation");
 
@@ -171,13 +129,9 @@ for (const [name, expected] of slugCases) {
   eq(`slugify "${name}"`, slugifyClubName(name), expected);
 }
 
-// ---------------------------------------------------------------------------
-// Stage 3 — Edit-code issuance + verification (mirrors approve + edit-code login)
-// ---------------------------------------------------------------------------
-
 console.log("\nStage 3: Edit-code issuance and verification");
 
-// Approval generates a code; it must always match the BL-XXXX-XXXX contract.
+// match the BL-XXXX-XXXX contract
 let allGeneratedValid = true;
 const generatedSamples: string[] = [];
 for (let i = 0; i < 500; i += 1) {
@@ -197,19 +151,18 @@ const storedHash = await hashEditCode(editCode); // what approval persists to cl
 eq("hashEditCode returns a 64-char SHA-256 hex digest", storedHash.length, 64);
 check("hash digest is lowercase hex", /^[0-9a-f]{64}$/.test(storedHash));
 
-// A member later logs in with the same code, possibly lowercased / padded with
-// whitespace. Verification must normalize and match the stored hash exactly.
+// A member later logs in with the same code, possibly lowercased and padded 
+// Verification must normalize and match the stored hash exactly
 const reEntered = `  ${editCode.toLowerCase()}  `;
 const reEnteredHash = await hashEditCode(reEntered);
 eq("re-entered code (lowercased + padded) hashes to the stored hash", reEnteredHash, storedHash);
 
-// A different code must not collide with the stored hash.
+// different code must not collide with the stored hash
 let otherCode = generateEditCode();
 while (otherCode === editCode) otherCode = generateEditCode();
 const otherHash = await hashEditCode(otherCode);
 check("a different code yields a different hash", otherHash !== storedHash);
 
-// Malformed codes must be rejected before hashing (no silent acceptance).
 const malformed = ["BL-123-4567", "XX-ABCD-1234", "BL-ABCD-123", "totally wrong", ""];
 for (const bad of malformed) {
   check(`malformed code "${bad || "<empty>"}" fails the format check`, !isEditCodeFormat(bad));
@@ -221,10 +174,6 @@ for (const bad of malformed) {
   }
   check(`hashEditCode rejects malformed code "${bad || "<empty>"}"`, threw);
 }
-
-// ---------------------------------------------------------------------------
-// Stage 4 — Public freshness lifecycle (drives the directory status badges)
-// ---------------------------------------------------------------------------
 
 console.log("\nStage 4: Public freshness lifecycle");
 
@@ -239,9 +188,7 @@ eq("30 days old -> needs update", calculateClubStatus(daysAgo(30), now), "needs 
 eq("invalid timestamp -> needs update", calculateClubStatus("not-a-date", now), "needs update");
 eq("future timestamp clamps to fresh", calculateClubStatus(daysAgo(-5), now), "fresh");
 
-// ---------------------------------------------------------------------------
 // Summary
-// ---------------------------------------------------------------------------
 
 console.log("\n" + "=".repeat(70));
 console.log(`Summary: ${passed}/${passed + failed} checks passed.`);

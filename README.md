@@ -137,7 +137,7 @@ http://localhost:3001
 
 ### 5. Verify Before Submitting
 
-Run these checks before final submission:
+Run the current verification suite before final submission:
 
 ```bash
 npm run lint
@@ -146,7 +146,7 @@ npm run test:e2e
 npm run build
 ```
 
-The `test:e2e` script runs the automated club lifecycle checks in `tests/registration-lifecycle.e2e.mts`. It verifies registration validation, slug generation, edit-code format/hash behavior, and public freshness-state transitions, and exits with a nonzero status if any check fails.
+The current `main` branch passes this command set. The `test:e2e` script runs the automated club lifecycle checks in `tests/registration-lifecycle.e2e.mts`; it verifies registration validation, slug generation, edit-code format/hash behavior, and public freshness-state transitions, and exits with a nonzero status if any check fails.
 
 ## Architecture
 
@@ -261,13 +261,14 @@ The core PRD success criteria are implemented:
 - generated edit codes
 - per-club edit mode
 - immediate publishing after saves
+- automated lifecycle checks through `npm run test:e2e`
+- passing lint, typecheck, and production build commands
 
 Remaining work before final submission:
 
 - choose the final seeded/demo club list
 - decide how demo edit codes will be distributed during presentation
 - run one final manual demo pass on the target Supabase project
-- confirm the final lint, typecheck, automated test, and build commands
 - optionally add update logs
 - optionally replace edit codes with UCLA email login plus club-claim verification in a future version
 

@@ -78,9 +78,7 @@ export function ClubDirectory({ clubs }: ClubDirectoryProps) {
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_340px] lg:px-8 lg:py-10">
           <div className="flex flex-col justify-between gap-8">
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--ucla-blue)] font-display text-lg font-extrabold text-[var(--ucla-yellow)]">
-                BL
-              </div>
+              <img src="/logo.jpg" alt="BruinLink Logo" className="h-11 w-11 rounded-lg object-cover bg-white" />
               <div>
                 <p className="font-display text-2xl font-bold text-[var(--foreground)]">
                   BruinLink

@@ -133,6 +133,39 @@ export function isValidMemberCount(count: number){
     return count > 0;
 }
 
+export function serializeLocation(location: LocationData): string {
+  return JSON.stringify(location);
+}
+
+export function parseLocation(value: string | null | undefined): LocationData {
+  if (!value) {
+    return { name: "" };
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === "object" && typeof parsed.name === "string") {
+      return parsed as LocationData;
+    }
+  } catch {
+    // still need?
+  }
+
+  return { name: value };
+}
+
+export function formatLocation(location: LocationData): string {
+  return [
+    location.room ? `Room ${location.room}` : undefined,
+    location.name,
+    location.city,
+    location.state,
+    location.country,
+  ]
+    .filter((part) => typeof part === "string" && part.trim() !== "")
+    .join(", ");
+}
+
 export function isValidLocation(location: any ){
     if(!location){
       console.log(`no location found`);

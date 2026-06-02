@@ -30,6 +30,7 @@ import {
   clubStatusLabels,
   formatLastUpdated,
 } from "@/lib/clubFreshness";
+import { formatLocation } from "@/lib/clubRegistration";
 import type {
   AdminReviewData,
   ClubRegistrationRequest,
@@ -670,7 +671,7 @@ function RequestCard({
         </p>
         <p>
           <span className="font-bold text-[var(--foreground)]">Location:</span>{" "}
-          {request.meetingLocation}
+          {formatLocation(request.meetingLocation)}
         </p>
       </div>
 

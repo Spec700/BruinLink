@@ -142,10 +142,11 @@ Run these checks before final submission:
 ```bash
 npm run lint
 npx tsc --noEmit
+npm run test:e2e
 npm run build
 ```
 
-If the team adds automated end-to-end tests, include and run that command here as well.
+The `test:e2e` script runs the automated club lifecycle checks in `tests/registration-lifecycle.e2e.mts`. It verifies registration validation, slug generation, edit-code format/hash behavior, and public freshness-state transitions, and exits with a nonzero status if any check fails.
 
 ## Architecture
 
@@ -265,8 +266,8 @@ Remaining work before final submission:
 
 - choose the final seeded/demo club list
 - decide how demo edit codes will be distributed during presentation
-- run one final end-to-end demo pass on the target Supabase project
-- confirm the final lint, typecheck, build, and automated test commands
+- run one final manual demo pass on the target Supabase project
+- confirm the final lint, typecheck, automated test, and build commands
 - optionally add update logs
 - optionally replace edit codes with UCLA email login plus club-claim verification in a future version
 

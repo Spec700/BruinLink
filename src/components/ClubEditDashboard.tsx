@@ -53,7 +53,7 @@ type ProfileForm = {
 
 type DetailsForm = {
   meetingTime: string;
-  location: Object | null;
+  location: string;
   members: string;
   contactInfo: string;
 };
@@ -527,10 +527,10 @@ function LocationInput({
   onChange}:
 {
   label: string;
-  value: Object | null,
+  value: string;
   error?: string;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
-  onChange: (value: Object | null) => void;
+  onChange: (value: string) => void;
 }){
   const id = label.toLowerCase().replace(/\s+/g, "-");
   return (

@@ -140,8 +140,9 @@ export function isValidLocation(location: any ){
     }
     const requiredFields = ["name", "city", "state", "country", "room"];
     for(const field of requiredFields){
-      if (!(field in location)){
-        console.log(`${field} not found in ${location}`)
+      const value = location[field];
+      if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")){
+        console.log(`${field} is missing or empty in ${JSON.stringify(location)}`)
         return false;
       }
     }

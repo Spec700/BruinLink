@@ -22,6 +22,7 @@ The project is intentionally scoped as a database-backed MVP. It does not depend
 - Admin-triggered edit-code regeneration for forgotten club codes
 - Per-club edit mode at `/clubs/[slug]/edit`
 - Editable club profile, meeting details, listed members, contact email, upcoming events, and announcements
+- Club profile image upload path backed by Supabase Storage
 - Immediate public-page updates after a successful club edit
 
 ## Routes
@@ -42,7 +43,21 @@ The project is intentionally scoped as a database-backed MVP. It does not depend
 - Tailwind CSS through the Next/Tailwind setup
 - Lucide icons
 
-## Environment Variables
+## Local Setup
+
+### Prerequisites
+
+- Node.js and npm
+- Access to a Supabase project, or the Supabase CLI for local database work
+- The project environment values listed below
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
 
 Create a `.env` file from `.env.example`:
 
@@ -66,15 +81,37 @@ Notes:
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only and is used for privileged admin/club edit server actions.
 - Never commit `.env` or real Supabase secrets.
 
-## Local Development
+### 3. Prepare Supabase
 
-Install dependencies:
+The schema is defined in:
 
 ```bash
-npm install
+supabase/migrations/20260513090000_init_bruinlink_schema.sql
 ```
 
-Start the dev server:
+The migration creates:
+
+- `clubs`
+- `club_registration_requests`
+- request approval RPC
+- row-level security for public visible-club reads
+- seeded demo club records
+
+Apply the migrations using the Supabase workflow your team is using. For a linked project, the usual command is:
+
+```bash
+supabase db push
+```
+
+The app also expects a Supabase Storage bucket named:
+
+```bash
+club-profile-images
+```
+
+This bucket is used for club profile images shown on directory cards, public club pages, and admin review. The current UI reads image URLs with `getPublicUrl`, so the bucket should be public for the submitted image paths to render in the browser.
+
+### 4. Run the App Locally
 
 ```bash
 npm run dev
@@ -98,30 +135,100 @@ Then open:
 http://localhost:3001
 ```
 
-## Supabase Setup
+### 5. Verify Before Submitting
 
-The current schema lives in:
-
-```bash
-supabase/migrations/20260513090000_init_bruinlink_schema.sql
-```
-
-The migration creates:
-
-- `clubs`
-- `club_registration_requests`
-- request approval RPC
-- row-level security for public visible-club reads
-- seeded demo club records
-
-For a linked Supabase project, apply migrations with the Supabase CLI workflow your team is using. After the schema is applied, make sure `.env` points at that Supabase project.
-
-## Useful Commands
+Run these checks before final submission:
 
 ```bash
 npm run lint
 npx tsc --noEmit
 npm run build
+```
+
+If the team adds automated end-to-end tests, include and run that command here as well.
+
+## Architecture
+
+### System Overview
+
+BruinLink is a Next.js app with browser-facing routes for students, club representatives, and admins. Public reads use the Supabase anon key and row-level security. Mutating flows go through server actions that use the service-role key after checking either an admin session or a club-specific edit session.
+
+```mermaid
+flowchart TD
+    Student[Student Browser] --> App[Next.js App]
+    Rep[Club Representative Browser] --> App
+    Admin[Admin Browser] --> App
+
+    App --> Directory[Public Directory UI]
+    App --> ClubPage[Public Club Page UI]
+    App --> Access[Dashboard Access UI]
+    App --> Register[Club Registration Form]
+    App --> Review[Admin Review UI]
+
+    Access --> Dashboard[Private Club Edit Dashboard]
+    Dashboard --> Actions[Next.js Server Actions]
+    Register --> Actions
+    Review --> Actions
+
+    Actions --> Database[Supabase Postgres]
+    Actions --> Storage[Supabase Storage]
+
+    Database --> Directory
+    Database --> ClubPage
+    Database --> Review
+    Storage --> ClubPage
+```
+
+### Dashboard Update Flow
+
+Club representatives do not edit files or static pages. They enter a per-club edit code, receive a scoped edit session, update structured fields, and the server action writes the validated update back to Supabase. Public pages then read the updated database content.
+
+```mermaid
+sequenceDiagram
+    participant Owner as Club Representative
+    participant UI as Edit UI
+    participant Server as Server Actions
+    participant DB as Supabase Postgres
+    participant Public as Public Club Page
+
+    Owner->>UI: Enter club edit code
+    UI->>Server: Submit access request
+    Server->>DB: Fetch club edit-code hash
+    Server->>Server: Hash and compare submitted code
+
+    alt Code is valid
+        Server-->>UI: Set scoped edit-session cookie
+        Owner->>UI: Edit club fields
+        UI->>Server: Submit profile/details/content update
+        Server->>Server: Validate required fields
+        Server->>DB: Update visible club row
+        Server-->>UI: Return updated club
+        Public->>DB: Read latest public club content
+    else Code is invalid
+        Server-->>UI: Return access error
+    end
+```
+
+### Data Relationships
+
+Club records are the source of truth for public pages. Registration requests stay separate until an admin approves them. Approval creates a visible club row, stores only a hashed edit code, and leaves rejected requests unpublished.
+
+```mermaid
+flowchart TD
+    Request[Club Registration Request] --> Review[Admin Review]
+    Review -->|Approve| Club[Club Record]
+    Review -->|Reject| Unpublished[Unpublished Request]
+
+    Club --> Directory[Public Directory]
+    Club --> Page[Public Club Page]
+    Club --> Dashboard[Private Club Dashboard]
+
+    Code[Per-Club Edit Code Hash] --> Dashboard
+    Dashboard --> Update[Validated Dashboard Update]
+    Update --> Club
+
+    Club --> ImagePath[Profile Image Path]
+    ImagePath --> Storage[Supabase Storage Bucket]
 ```
 
 ## Access Model
@@ -154,12 +261,12 @@ The core PRD success criteria are implemented:
 - per-club edit mode
 - immediate publishing after saves
 
-Remaining work is mostly demo readiness and optional polish:
+Remaining work before final submission:
 
 - choose the final seeded/demo club list
 - decide how demo edit codes will be distributed during presentation
 - run one final end-to-end demo pass on the target Supabase project
-- optionally add image uploads
+- confirm the final lint, typecheck, build, and automated test commands
 - optionally add update logs
 - optionally replace edit codes with UCLA email login plus club-claim verification in a future version
 

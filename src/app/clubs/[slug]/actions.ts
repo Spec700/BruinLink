@@ -7,7 +7,7 @@ import {
   type Club,
   type ClubRow,
 } from "@/lib/clubs";
-import { isValidEmail } from "@/lib/clubRegistration";
+import { isValidEmail, LocationData } from "@/lib/clubRegistration";
 import {
   clearClubEditSession,
   requireClubEditSession,
@@ -44,7 +44,7 @@ type ProfileInput = {
 
 type DetailsInput = {
   meetingTime: string;
-  location: string;
+  location: LocationData;
   members: string;
   contactInfo: string;
 };
@@ -125,7 +125,7 @@ export async function updateClubDetailsAction(
     await requireClubEditSession(slug);
 
     const meetingTime = input.meetingTime.trim();
-    const location = input.location.trim();
+    const location = input.location;
     const contactInfo = input.contactInfo.trim();
     const members = input.members.trim();
     const fieldErrors: Record<string, string> = {};
@@ -158,7 +158,7 @@ export async function updateClubDetailsAction(
 
     const club = await updateVisibleClub(slug, {
       meeting_time: meetingTime,
-      location,
+      location: location,
       members: Number.parseInt(members, 10),
       contact_info: contactInfo,
     });

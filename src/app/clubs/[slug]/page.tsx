@@ -133,7 +133,7 @@ export default async function ClubDashboardPage({ params }: ClubPageProps) {
                     aria-hidden="true"
                     className="h-4 w-4 text-[var(--ucla-blue)]"
                   />
-                  <span>{club.location}</span>
+                  <span>{club.location.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users

@@ -140,7 +140,7 @@ export function AdminReviewPanel({ initialState }: AdminReviewPanelProps) {
         categoryLabels[club.category],
         club.contactInfo,
         club.meetingTime,
-        club.location,
+        club.location.name,
         clubStatusLabels[club.status],
         club.status,
         club.visibilityState,
@@ -604,19 +604,18 @@ function RequestCard({
           <p className="mt-2 text-sm font-bold text-[var(--ucla-blue)]">
             {categoryLabels[request.category]}
           </p>
-          <div className="mt-2">
-            {request.profileImageUrl ? (
-              <img
-                src={request.profileImageUrl}
-                alt={`${request.clubName} profile image`}
-                className="h-16 w-16 rounded-lg object-cover"
-              />
-            ) : (
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
-                {initials(request.clubName)}
-              </div>
-            )}
-          </div>
+              {request.profileImageUrl ? (
+            <img
+              src={request.profileImageUrl}
+              alt={`${request.clubName} profile image`}
+              className="mt-2 h-16 w-16 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="mt-2 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
+              {initials(request.clubName)}
+            </div>
+          )}
+        
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <span className="rounded-full bg-[var(--ucla-yellow-soft)] px-3 py-1 text-sm font-bold text-[oklch(0.35_0.1_73)]">
@@ -667,7 +666,8 @@ function RequestCard({
         </p>
         <p>
           <span className="font-bold text-[var(--foreground)]">Location:</span>{" "}
-          {formatLocation(request.meetingLocation)}
+
+          {request.location.name}
         </p>
       </div>
 
@@ -748,7 +748,7 @@ function ManagedClubCard({
         </span>
       </div>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        {club.meetingTime} at {club.location}
+        {club.meetingTime} at {club.location.name}
       </p>
       <p className="truncate text-xs leading-5 text-[var(--muted)]">
         {club.contactInfo}

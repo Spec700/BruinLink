@@ -33,6 +33,7 @@ import {
   clubDashboardStatusLabels,
   formatLastUpdated,
 } from "@/lib/clubFreshness";
+import { LocationData } from "@/lib/clubRegistration";
 
 type ClubEditDashboardProps = {
   initialClub: Club;
@@ -53,7 +54,7 @@ type ProfileForm = {
 
 type DetailsForm = {
   meetingTime: string;
-  location: string;
+  location: LocationData;
   members: string;
   contactInfo: string;
 };
@@ -267,7 +268,7 @@ export function ClubEditDashboard({
                     {formatLastUpdated(club.lastEditedAt)}
                   </p>
                   <DetailRow icon={<CalendarDays />} value={club.meetingTime} />
-                  <DetailRow icon={<MapPin />} value={club.location} />
+                  <DetailRow icon={<MapPin />} value={club.location.name} />
                   <DetailRow
                     icon={<Users />}
                     value={`${club.members} listed members`}
@@ -527,10 +528,11 @@ function LocationInput({
   onChange}:
 {
   label: string;
-  value: string;
+
+  value: LocationData,
   error?: string;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
-  onChange: (value: string) => void;
+  onChange: (value: LocationData) => void;
 }){
   const id = label.toLowerCase().replace(/\s+/g, "-");
   return (
@@ -543,9 +545,14 @@ function LocationInput({
       </label>
       <input
         id={id}
-        value={value}
+        value={value.name}
         inputMode={inputMode}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) =>
+          onChange({
+            ...value,
+            name: event.target.value,
+          })
+        }
         className={`mt-2 h-11 w-full rounded-lg border bg-[var(--background)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--ucla-blue)] ${
           error ? "border-[var(--danger)]" : "border-[var(--line)]"
         }`}

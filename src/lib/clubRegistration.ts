@@ -13,7 +13,7 @@ export type ClubRegistrationInput = {
   shortDescription: string;
   about: string;
   meetingTime: string;
-  meetingLocation: LocationData;
+  location: LocationData;
   profileImage: File | null;
   publicContactEmail: string;
   members: number
@@ -38,6 +38,7 @@ export type ClubRegistrationRequest = Omit<ClubRegistrationInput, "category" | "
   profileImagePath?: string | null;
   members: number;
   profileImageUrl?: string | null;
+  location: LocationData;
 };
 
 
@@ -49,7 +50,7 @@ export type ManagedClub = {
   category: ClubCategory;
   contactInfo: string;
   meetingTime: string;
-  location: string;
+  location: LocationData;
   status: ClubStatus;
   visibilityState: ClubVisibilityState;
   lastEditedAt: string;
@@ -102,7 +103,7 @@ export const initialRegistrationInput: ClubRegistrationInput = {
   shortDescription: "",
   about: "",
   meetingTime: "",
-  meetingLocation: {name: ""},
+  location: {name: ""},
   publicContactEmail: "",
   members: 0,
 };
@@ -120,7 +121,7 @@ export const registrationFieldLabels: Record<
   shortDescription: "Short description",
   about: "About",
   meetingTime: "Meeting time",
-  meetingLocation: "Meeting location",
+  location: "Meeting location",
   publicContactEmail: "Public contact email",
   members: "Number of members"
 };
@@ -133,32 +134,7 @@ export function isValidMemberCount(count: number){
     return count > 0;
 }
 
-export function serializeLocation(location: LocationData): LocationData {
-  return location;
-}
 
-export function parseLocation(
-  value: string | Record<string, unknown> | null | undefined,
-): LocationData {
-  if (!value) {
-    return { name: "" };
-  }
-
-  if (typeof value === "object") {
-    return normalizeParsedLocation(value);
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-    if (parsed && typeof parsed === "object") {
-      return normalizeParsedLocation(parsed as Record<string, unknown>);
-    }
-  } catch {
-    // still need?
-  }
-
-  return { name: value };
-}
 
 function normalizeParsedLocation(value: Record<string, unknown>): LocationData {
   return {
@@ -182,7 +158,7 @@ export function formatLocation(location: LocationData): string {
     .join(", ");
 }
 
-export function isValidLocation(location: LocationData | null | undefined){
+export function isValidLocation(location: LocationData ){
     if(!location){
       console.log(`no location found`);
       return false;
@@ -229,17 +205,13 @@ export function normalizeRegistrationInput(
     shortDescription: input.shortDescription.trim(),
     about: input.about.trim(),
     meetingTime: input.meetingTime.trim(),
-    meetingLocation: {
-      ...input.meetingLocation,
-      name: input.meetingLocation.name.trim(),
-      city: input.meetingLocation.city?.trim(),
-      state: input.meetingLocation.state?.trim(),
-      country: input.meetingLocation.country?.trim(),
-      room:
-        typeof input.meetingLocation.room === "number" &&
-        Number.isFinite(input.meetingLocation.room)
-          ? input.meetingLocation.room
-          : undefined
+    location: {
+      ...input.location,
+      name: input.location.name.trim(),
+      city: input.location.city?.trim(),
+      state: input.location.state?.trim(),
+      country: input.location.country?.trim(),
+      room: input.location.room
     },
     publicContactEmail: input.publicContactEmail.trim(),
     profileImage: input.profileImage,
@@ -260,7 +232,7 @@ export function validateRegistrationInput(
     "shortDescription",
     "about",
     "meetingTime",
-    "meetingLocation",
+    "location",
     "publicContactEmail",
     "members"
   ] satisfies Array<keyof ClubRegistrationInput>) {
@@ -268,8 +240,8 @@ export function validateRegistrationInput(
       errors[field] = `${registrationFieldLabels[field]} is required.`;
     }
   }
-  if(!isValidLocation(data.meetingLocation)){
-    errors.meetingLocation = "Meeting Location is required.";
+  if(!isValidLocation(data.location)){
+    errors.location = "Meeting Location is required.";
   }
 
   if(!isValidMemberCount(data.members)){

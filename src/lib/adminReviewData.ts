@@ -10,8 +10,7 @@ import {
   generateEditCode,
   formatLocation,
   hashEditCode,
-  parseLocation,
-  serializeLocation,
+  LocationData,
   type AdminReviewData,
   type ClubRegistrationRequest,
   type ValidatedClubRegistrationInput,
@@ -29,7 +28,7 @@ type RegistrationRequestRow = {
   short_description: string;
   about: string;
   meeting_time: string;
-  location: string | Record<string, unknown> | null;
+  location: LocationData;
   public_contact_email: string;
   status: ClubRegistrationRequest["status"];
   admin_note: string | null;
@@ -180,7 +179,7 @@ export async function createRegistrationRequest(
       short_description: input.shortDescription,
       about: input.about,
       meeting_time: input.meetingTime,
-      location: serializeLocation(input.meetingLocation),
+      location: input.location,
       public_contact_email: input.publicContactEmail,
       status: "pending",
       profile_image_path: profileImagePath,
@@ -234,7 +233,7 @@ export async function approveRegistrationRequest(
     announcements: "",
     contact_info: request.public_contact_email,
     meeting_time: request.meeting_time,
-    location: formatLocation(parseLocation(request.location)),
+    location: request.location,
     members: request.members,
     status: "fresh",
     visibility_state: "visible",
@@ -387,7 +386,7 @@ function rowToRegistrationRequest(
     shortDescription: row.short_description,
     about: row.about,
     meetingTime: row.meeting_time,
-    meetingLocation: parseLocation(row.location),
+    location: row.location,
     publicContactEmail: row.public_contact_email,
     status: row.status,
     createdAt: row.created_at,

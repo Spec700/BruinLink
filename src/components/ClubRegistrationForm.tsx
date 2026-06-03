@@ -40,6 +40,7 @@ type ClubPreview = {
   status: string;
   lastEditedAt: string;
   profileImage: File | null;
+  profileImageUrl?: string | null;
 };
 
 type ModalProps = { 
@@ -112,11 +113,12 @@ export function ClubRegistrationForm() {
       category: form.category,
       shortDescription: form.shortDescription,
       meetingTime: form.meetingTime,
-      location: form.meetingLocation,
+      location: form.location,
       members: Number(form.members || 0),
       status: "preview",
       lastEditedAt: new Date().toISOString(),
       profileImage: form.profileImage,
+      profileImageUrl: previewUrl ?? null,
     });
 
     setShowPreview(true)
@@ -379,9 +381,9 @@ export function ClubRegistrationForm() {
                   icon={<CalendarDays aria-hidden="true" className="h-4 w-4" />}
                 />
                 <LocationAutocomplete
-                  name="meetingLocation"
-                  value={form.meetingLocation}
-                  error={errors.meetingLocation}
+                  name="location"
+                  value={form.location}
+                  error={errors.location}
                   onChange={updateField}
                   icon={<MapPin aria-hidden="true" className="h-4 w-4" />}
                 />
@@ -666,7 +668,7 @@ function LocationAutocomplete({
       htmlFor={name}
       className="mb-1 block text-sm font-bold text-[var(--foreground)]"
     >
-      {registrationFieldLabels.meetingLocation}
+      {registrationFieldLabels.location}
     </label>
 
     <div
@@ -902,17 +904,7 @@ function Modal({
 
 function ClubCardPreview({ club }: {club: ClubPreview | null}) {
   const profileImage = club?.profileImage ?? null;
-  const objectUrl = useMemo(
-    () => (profileImage ? URL.createObjectURL(profileImage) : null),
-    [profileImage],
-  );
-  useEffect(() => {
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [objectUrl]);
+
 
   if (!club) {
     return (
@@ -929,7 +921,7 @@ function ClubCardPreview({ club }: {club: ClubPreview | null}) {
     <div className="flex items-start justify-between gap-3">
     <div className="flex items-center gap-3">
     <div>
-    {objectUrl ? (<img src={objectUrl} className="h-12 w-12 rounded-lg object-cover" alt="" />) 
+    {profileImage ? (<img src={club.profileImageUrl} className="h-12 w-12 rounded-lg object-cover" alt="" />) 
     : (<div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-extrabold text-[var(--ucla-blue-strong)]">
     {initials(club.name)}
     </div>)}
@@ -940,32 +932,32 @@ function ClubCardPreview({ club }: {club: ClubPreview | null}) {
       </p>
     </div>
     </div>
-<ArrowUpRight
-aria-hidden="true"
-className="h-5 w-5 shrink-0 text-[var(--muted)] transition group-hover:text-[var(--ucla-blue)]"
-/>
-</div>
-<p className="mt-4 line-clamp-3 text-base leading-7 text-[var(--muted)]">
-{club.shortDescription}
-</p>
-</div>
-<div className="mt-5 grid gap-3">
-<div className="flex items-center gap-2 text-sm text-[var(--muted)]">
-<CalendarDays
-aria-hidden="true"
-className="h-4 w-4 text-[var(--ucla-blue)]"
-/>
-<span className="min-w-0 truncate">{club.meetingTime}</span>
-</div>
-<div className="flex items-center gap-2 text-sm text-[var(--muted)]">
-<MapPin
-aria-hidden="true"
-className="h-4 w-4 text-[var(--ucla-blue)]"
-/>
-<span className="min-w-0 truncate">{club.location
-? [club.location.name, club.location.city, club.location.state, club.location.room].filter(Boolean).join(", ")
-: "No location"}</span>
-</div>
+      <ArrowUpRight
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0 text-[var(--muted)] transition group-hover:text-[var(--ucla-blue)]"
+      />
+      </div>
+      <p className="mt-4 line-clamp-3 text-base leading-7 text-[var(--muted)]">
+      {club.shortDescription}
+      </p>
+      </div>
+      <div className="mt-5 grid gap-3">
+      <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+      <CalendarDays
+      aria-hidden="true"
+      className="h-4 w-4 text-[var(--ucla-blue)]"
+      />
+      <span className="min-w-0 truncate">{club.meetingTime}</span>
+      </div>
+      <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
+      <MapPin
+      aria-hidden="true"
+      className="h-4 w-4 text-[var(--ucla-blue)]"
+      />
+        <span className="min-w-0 truncate">{club.location.name
+        ? club.location.name
+        : "No location"}</span>
+        </div>
 <div className="flex items-center justify-between gap-2 pt-2">
 <div className="min-w-0">
 <span

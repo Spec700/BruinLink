@@ -3,6 +3,7 @@ import {
   calculateClubStatus,
   type ClubStatus,
 } from "@/lib/clubFreshness";
+import { LocationData } from "./clubRegistration";
 
 export type { ClubStatus } from "@/lib/clubFreshness";
 
@@ -34,7 +35,7 @@ export type Club = {
   announcements: string;
   contactInfo: string;
   meetingTime: string;
-  location: string;
+  location: LocationData;
   members: number;
   status: ClubStatus;
   visibilityState: ClubVisibilityState;
@@ -56,7 +57,7 @@ export type ClubRow = {
   announcements: string;
   contact_info: string;
   meeting_time: string;
-  location: string;
+  location: LocationData;
   members: number;
   status: ClubStatus;
   visibility_state: ClubVisibilityState;

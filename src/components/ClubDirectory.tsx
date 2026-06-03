@@ -21,6 +21,7 @@ import {
   clubStatusLabels,
   formatLastUpdated,
 } from "@/lib/clubFreshness";
+import { LocationData } from "@/lib/clubRegistration";
 
 type Filter = "all" | ClubCategory;
 
@@ -39,6 +40,7 @@ export default function initials(name: string) {
     .join("")
     .toUpperCase();
 }
+
 
 type ClubDirectoryProps = {
   clubs: Club[];
@@ -269,7 +271,7 @@ export function ClubDirectory({ clubs }: ClubDirectoryProps) {
                           aria-hidden="true"
                           className="h-4 w-4 shrink-0 text-[var(--ucla-blue)]"
                         />
-                        <span className="min-w-0 truncate">{club.location}</span>
+                        <span className="min-w-0 truncate"> {club.location.name}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2 pt-2">
                         <div className="min-w-0">

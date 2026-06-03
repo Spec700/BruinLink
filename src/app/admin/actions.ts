@@ -69,7 +69,9 @@ export async function approveRegistrationRequestAction(
   requestId: string,
   adminNote: string,
 ): Promise<AdminMutationResult> {
+  console.log("im being called");
   try {
+    
     await requireAdminSession();
     const approved = await approveRegistrationRequest(requestId, adminNote);
 

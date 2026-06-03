@@ -40,6 +40,7 @@ type ClubPreview = {
   status: string;
   lastEditedAt: string;
   profileImage: File | null;
+  previewUrl?: string | null;
 };
 
 type ModalProps = { 
@@ -112,11 +113,12 @@ export function ClubRegistrationForm() {
       category: form.category,
       shortDescription: form.shortDescription,
       meetingTime: form.meetingTime,
-      location: form.meetingLocation,
+      location: form.location,
       members: Number(form.members || 0),
       status: "preview",
       lastEditedAt: new Date().toISOString(),
       profileImage: form.profileImage,
+      previewUrl,
     });
 
     setShowPreview(true)
@@ -378,10 +380,10 @@ export function ClubRegistrationForm() {
                   onChange={updateField}
                   icon={<CalendarDays aria-hidden="true" className="h-4 w-4" />}
                 />
-                <LocationAutocomplete
-                  name="meetingLocation"
-                  value={form.meetingLocation}
-                  error={errors.meetingLocation}
+                <LocationInput
+                  name="location"
+                  value={form.location}
+                  error={errors.location}
                   onChange={updateField}
                   icon={<MapPin aria-hidden="true" className="h-4 w-4" />}
                 />
@@ -548,7 +550,6 @@ function ImageUpload({
 }
 
 
-
 type PhotonFeature = {
   properties: {
     name?: string;
@@ -569,7 +570,8 @@ function normalizeRoomNumber(value: number | "") {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
-function LocationAutocomplete({
+
+function LocationInput({
   name,
   value,
   error,
@@ -602,7 +604,7 @@ function LocationAutocomplete({
       room: nextRoom,
     });
   }
-
+  
   useEffect(() => {
     const timeout = setTimeout(async () => {
       if (query.length < 3) {
@@ -619,7 +621,6 @@ function LocationAutocomplete({
 
         const data = await res.json();
         setResults(data.features || []);
-
       } catch (err) {
         console.error("Search failed:", err);
       } finally {
@@ -633,13 +634,13 @@ function LocationAutocomplete({
   const handleSelect = (feature: PhotonFeature) => {
   const props = feature.properties;
 
-  const room = normalizeRoomNumber(props.room ?? "");
+
   const location: LocationData = {
     name: props.name ?? "",
     city: props.city,
     state: props.state,
     country: props.country,
-    room,
+    room: normalizeRoomNumber(roomNumber),
   };
 
   const label = [
@@ -647,132 +648,139 @@ function LocationAutocomplete({
     location.city,
     location.state,
     location.country,
+    location.room,
   ]
     .filter(Boolean)
     .join(", ");
 
   setQuery(label);
-  setRoomNumber(room ?? "");
+  setRoomNumber(location.room ?? "");
   setResults([]);
   onChange(name, location);
 };
 
   return (
-   <div className="mt-2 flex gap-3 items-start">
-  
-  {/* Location Field */}
-  <div className="flex-1">
-    <label
-      htmlFor={name}
-      className="mb-1 block text-sm font-bold text-[var(--foreground)]"
-    >
-      {registrationFieldLabels.meetingLocation}
-    </label>
-
-    <div
-      className={`flex h-12 items-center gap-3 rounded-lg border bg-[var(--background)] px-3 transition focus-within:border-[var(--ucla-blue)] ${
-        error ? "border-[var(--danger)]" : "border-[var(--line)]"
-      }`}
-    >
-      {icon ? (
-        <span className="text-[var(--ucla-blue)]">{icon}</span>
-      ) : null}
-
-      <input
-        type="text"
-        name={name}
-        value={query}
-        onChange={(e) => {
-          const nextQuery = e.target.value;
-          setQuery(nextQuery);
-          onChange(name, {
-            ...value,
-            name: nextQuery,
-            room: normalizeRoomNumber(roomNumber),
-          });
-        }}
-        className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
-      />
-    </div>
-  </div>
-
-  {/* Room Number Field */}
-  <div className="w-32">
-    <label
-      htmlFor="roomNumber"
-      className="mb-1 block text-sm font-bold text-[var(--foreground)]"
-    >
-      Room Number
-    </label>
-
-    <div
-      className={`flex h-12 items-center rounded-lg border bg-[var(--background)] px-3 focus-within:border-[var(--ucla-blue)] ${
-        error ? "border-[var(--danger)]" : "border-[var(--line)]"
-      }`}
-    >
-      <input
-        type="number"
-        value={roomNumber}
-        onChange={(e) => handleRoomChange(e.target.value)}
-        min="1"
-        id="roomNumber"
-        className="h-full w-full bg-transparent text-sm text-[var(--foreground)] outline-none"
-      />
-    </div>
-      
-    </div>
-      {results.length > 0 && (
-        <div
-          style={{
-            background: "white",
-            border: "1px solid #ddd",
-            borderTop: "none",
-            fontFamily: "Freeman, sans-serif",
-            zIndex: 1000,
-            maxHeight: 250,
-            overflowY: "auto",
-            position: "absolute",
-          }}
-          className="flex-1"
+  <div>
+    <div className="mt-2 flex gap-3 items-start">
+      <div className="flex-1">
+        <label
+          htmlFor={name}
+          className="mb-1 block text-sm font-bold text-[var(--foreground)]"
         >
-          {results.map((feature, index) => {
-            const props = feature.properties;
+          {registrationFieldLabels.location}
+        </label>
 
-            const label = [props.name, props.city, props.state, props.country]
-              .filter(Boolean)
-              .join(", ");
+        <div
+          className={`flex h-12 items-center gap-3 rounded-lg border bg-[var(--background)] px-3 transition focus-within:border-[var(--ucla-blue)] ${
+            error ? "border-[var(--danger)]" : "border-[var(--line)]"
+          }`}
+        >
+          {icon ? (
+            <span className="text-[var(--ucla-blue)]">{icon}</span>
+          ) : null}
 
-            return (
-              <div
-                key={index}
-                onClick={() => handleSelect(feature)}
-                style={{
-                  padding: "12px",
-                  cursor: "pointer",
-                  borderBottom: "1px solid #eee",
-                  color: "#3A5186",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#3A5186";
-                  e.currentTarget.style.color = "white";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "white";
-                  e.currentTarget.style.color = "#3A5186";
-                }}
-              >
-                {label}
-              </div>
-            );
-          })}
+          <input
+            type="text"
+            name={name}
+            value={query}
+            onChange={(e) => {
+              const nextQuery = e.target.value;
+              setQuery(nextQuery);
+              onChange(name, {
+                ...value,
+                name: nextQuery,
+                room: normalizeRoomNumber(roomNumber),
+              });
+            }}
+            className="h-full min-w-0 flex-1 bg-transparent text-base text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]"
+          />
         </div>
-      )}
+      </div>
 
-      {loading && <div style={{ marginTop: 8 }}>Searching...</div>}
-      <FieldError message={error} />
+      <div className="w-32">
+        <label
+          htmlFor="roomNumber"
+          className="mb-1 block text-sm font-bold text-[var(--foreground)]"
+        >
+          Room Number
+        </label>
+
+        <div
+          className={`flex h-12 items-center rounded-lg border bg-[var(--background)] px-3 focus-within:border-[var(--ucla-blue)] ${
+            error ? "border-[var(--danger)]" : "border-[var(--line)]"
+          }`}
+        >
+          <input
+            type="number"
+            value={roomNumber}
+            onChange={(e) => handleRoomChange(e.target.value)}
+            min="1"
+            id="roomNumber"
+            className="h-full w-full bg-transparent text-sm text-[var(--foreground)] outline-none"
+          />
+        </div>
+      </div>
     </div>
-  );
-}
+
+    {results.length > 0 && (
+      <div
+        style={{
+          background: "white",
+          border: "1px solid #ddd",
+          borderTop: "none",
+          fontFamily: "Freeman, sans-serif",
+          zIndex: 1000,
+          maxHeight: 250,
+          overflowY: "auto",
+          position: "absolute",
+        }}
+      >
+        {results.map((feature, index) => {
+          const props = feature.properties;
+
+          const label = [
+            props.name,
+            props.city,
+            props.state,
+            props.country,
+          ]
+            .filter(Boolean)
+            .join(", ");
+
+          return (
+            <div
+              key={index}
+              onClick={() => handleSelect(feature)}
+              style={{
+                padding: "12px",
+                cursor: "pointer",
+                borderBottom: "1px solid #eee",
+                color: "#3A5186",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#3A5186";
+                e.currentTarget.style.color = "white";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "white";
+                e.currentTarget.style.color = "#3A5186";
+              }}
+            >
+              {label}
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {loading && <div style={{ marginTop: 8 }}>Searching...</div>}
+
+    <FieldError message={error} />
+  </div>
+);
+  }
+
+
 
 function TextInput({
   name,
@@ -902,17 +910,7 @@ function Modal({
 
 function ClubCardPreview({ club }: {club: ClubPreview | null}) {
   const profileImage = club?.profileImage ?? null;
-  const objectUrl = useMemo(
-    () => (profileImage ? URL.createObjectURL(profileImage) : null),
-    [profileImage],
-  );
-  useEffect(() => {
-    return () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [objectUrl]);
+  
 
   if (!club) {
     return (
@@ -923,13 +921,20 @@ function ClubCardPreview({ club }: {club: ClubPreview | null}) {
   <Link
       key=""
       href=""
-    className="group flex min-h-[292px] flex-col justify-between rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--ucla-blue)] hover:shadow-[0_18px_42px_oklch(0.35_0.09_252_/_0.14)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)]"
+      className="group flex min-h-[292px] flex-col justify-between rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--ucla-blue)] hover:shadow-[0_18px_42px_oklch(0.35_0.09_252_/_0.14)] focus:outline-none focus:ring-2 focus:ring-[var(--ucla-blue)]"
     >
     <div>
     <div className="flex items-start justify-between gap-3">
     <div className="flex items-center gap-3">
     <div>
-    {objectUrl ? (<img src={objectUrl} className="h-12 w-12 rounded-lg object-cover" alt="" />) 
+
+    {club.previewUrl ? (
+      <img src={club.previewUrl} 
+      className="h-12 w-12 rounded-lg object-cover" 
+      alt="" 
+      />
+  
+    ) 
     : (<div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-extrabold text-[var(--ucla-blue-strong)]">
     {initials(club.name)}
     </div>)}
@@ -940,10 +945,10 @@ function ClubCardPreview({ club }: {club: ClubPreview | null}) {
       </p>
     </div>
     </div>
-<ArrowUpRight
-aria-hidden="true"
-className="h-5 w-5 shrink-0 text-[var(--muted)] transition group-hover:text-[var(--ucla-blue)]"
-/>
+      <ArrowUpRight
+      aria-hidden="true"
+      className="h-5 w-5 shrink-0 text-[var(--muted)] transition group-hover:text-[var(--ucla-blue)]"
+      />
 </div>
 <p className="mt-4 line-clamp-3 text-base leading-7 text-[var(--muted)]">
 {club.shortDescription}
@@ -962,8 +967,8 @@ className="h-4 w-4 text-[var(--ucla-blue)]"
 aria-hidden="true"
 className="h-4 w-4 text-[var(--ucla-blue)]"
 />
-<span className="min-w-0 truncate">{club.location
-? [club.location.name, club.location.city, club.location.state, club.location.room].filter(Boolean).join(", ")
+<span className="min-w-0 truncate">{club.location.name
+? club.location.name
 : "No location"}</span>
 </div>
 <div className="flex items-center justify-between gap-2 pt-2">

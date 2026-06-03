@@ -84,7 +84,7 @@ export default async function ClubDashboardPage({ params }: ClubPageProps) {
                     className="h-20 w-20 shrink-0 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-base font-extrabold text-[var(--ucla-blue-strong)]">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-display text-2xl font-extrabold text-[var(--ucla-blue-strong)]">
                     {initials(club.name)}
                   </div>
                 )}
@@ -133,7 +133,7 @@ export default async function ClubDashboardPage({ params }: ClubPageProps) {
                     aria-hidden="true"
                     className="h-4 w-4 text-[var(--ucla-blue)]"
                   />
-                  <span>{club.location}</span>
+                  <span>{club.location.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users

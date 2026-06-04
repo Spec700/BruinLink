@@ -148,6 +148,39 @@ npm run build
 
 The current `main` branch passes this command set. The `test:e2e` script runs the automated club lifecycle checks in `tests/registration-lifecycle.e2e.mts`; it verifies registration validation, slug generation, edit-code format/hash behavior, and public freshness-state transitions, and exits with a nonzero status if any check fails.
 
+## Deployment
+
+BruinLink is deployed on Vercel:
+
+- Production URL: [https://bruin-link.vercel.app/](https://bruin-link.vercel.app/)
+- Production branch: `main`
+
+The Vercel project is connected to the GitHub repository. Changes merged into `main` are the production deployment source.
+
+### Vercel Environment Variables
+
+Configure the same environment variable names in Vercel Project Settings:
+
+```bash
+BRUINLINK_ADMIN_PASSWORD=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+Deployment notes:
+
+- Mark `BRUINLINK_ADMIN_PASSWORD` and `SUPABASE_SERVICE_ROLE_KEY` as sensitive values in Vercel.
+- `BRUINLINK_ADMIN_PASSWORD` and `SUPABASE_SERVICE_ROLE_KEY` must stay server-side only. Do not rename them with a `NEXT_PUBLIC_` prefix.
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are public browser-facing values used by the Supabase client for public reads.
+- After changing Vercel environment variables, redeploy so the deployment uses the new values.
+
+### Supabase Deployment Notes
+
+The current linked Supabase project already has the required schema. No migration push is needed for the existing hosted database before deploying to Vercel.
+
+The migration files in this repository are still important for fresh local resets or future Supabase projects. `supabase/seed.sql` is intentionally empty because the demo club records are seeded by `supabase/migrations/20260513090000_init_bruinlink_schema.sql`.
+
 ## Architecture
 
 ### System Overview

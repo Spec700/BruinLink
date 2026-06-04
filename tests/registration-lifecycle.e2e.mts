@@ -47,7 +47,7 @@ function buildValidInput(
     shortDescription: "We build robots and ship AI demos.",
     about: "A student org exploring applied AI and autonomous systems.",
     meetingTime: "Wednesdays 6pm",
-    meetingLocation: {
+    location: {
       name: "Boelter Hall",
       city: "Los Angeles",
       state: "CA",
@@ -99,8 +99,8 @@ const invalidCases: Array<{
   },
   {
     name: "incomplete meeting location is rejected",
-    field: "meetingLocation",
-    input: buildValidInput({ meetingLocation: { name: "Boelter Hall" } }),
+    field: "location",
+    input: buildValidInput({ location: { name: "Boelter Hall" } }),
   },
   {
     name: "club name without alphanumerics is rejected",

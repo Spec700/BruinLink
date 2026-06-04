@@ -7,7 +7,7 @@ import {
   type Club,
   type ClubRow,
 } from "@/lib/clubs";
-import { isValidEmail, LocationData } from "@/lib/clubRegistration";
+import { isValidEmail, type LocationData } from "@/lib/clubRegistration";
 import {
   clearClubEditSession,
   requireClubEditSession,
@@ -50,6 +50,19 @@ type DetailsInput = {
 };
 
 type ContentField = "upcomingEvents" | "announcements";
+type ClubUpdateValues = Partial<
+  Pick<
+    ClubRow,
+    | "short_description"
+    | "about"
+    | "meeting_time"
+    | "location"
+    | "members"
+    | "contact_info"
+    | "upcoming_events"
+    | "announcements"
+  >
+>;
 
 export async function verifyClubEditCodeAction(
   slug: string,
@@ -201,7 +214,7 @@ export async function updateClubContentAction(
 
 async function updateVisibleClub(
   slug: string,
-  values: Record<string, string | number>,
+  values: ClubUpdateValues,
 ) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase

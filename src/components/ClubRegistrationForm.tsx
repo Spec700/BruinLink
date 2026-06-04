@@ -903,9 +903,6 @@ function Modal({
   
 
 function ClubCardPreview({ club }: {club: ClubPreview | null}) {
-  const profileImage = club?.profileImage ?? null;
-
-
   if (!club) {
     return (
        <div>Unable to produce card</div>
@@ -921,7 +918,7 @@ function ClubCardPreview({ club }: {club: ClubPreview | null}) {
     <div className="flex items-start justify-between gap-3">
     <div className="flex items-center gap-3">
     <div>
-    {profileImage ? (<img src={club.profileImageUrl} className="h-12 w-12 rounded-lg object-cover" alt="" />) 
+    {club.profileImageUrl ? (<img src={club.profileImageUrl} className="h-12 w-12 rounded-lg object-cover" alt="" />) 
     : (<div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ucla-blue-soft)] font-extrabold text-[var(--ucla-blue-strong)]">
     {initials(club.name)}
     </div>)}

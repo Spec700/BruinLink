@@ -308,4 +308,4 @@ Remaining work before final submission:
 ## Documentation
 
 - Product requirements: `BruinLink-PRD.md`
-- Implementation plan/source of truth: `docs/plans/club-registration-admin-review-plan.md`
+
